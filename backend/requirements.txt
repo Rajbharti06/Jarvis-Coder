@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+pydantic[email]
+sqlalchemy
+alembic
+python-dotenv
+passlib[bcrypt]
+python-jose[cryptography]
+loguru
+ollama
+openai
+anthropic
+google-generativeai
+groq
+together
+pyjwt[crypto]
