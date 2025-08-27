@@ -1,0 +1,37 @@
+{
+  "default_model": "mistral",
+  "api_keys": {
+    "openai": "your-openai-api-key-here",
+    "anthropic": "your-anthropic-api-key-here",
+    "mistral": "your-mistral-api-key-here",
+    "groq": "your-groq-api-key-here",
+    "moonshotai": "your-moonshotai-api-key-here"
+  },
+  "local_models": {
+    "mistral": "http://localhost:11434/api/generate",
+    "gpt-oss:20b": "http://localhost:11434/api/generate",
+    "deepseek-coder": "http://localhost:11435"
+  },
+  "llm_providers": {
+    "openai": {
+      "api_base": "https://api.openai.com/v1"
+    },
+    "anthropic": {
+      "api_base": "https://api.anthropic.com/v1"
+    },
+    "mistral": {
+      "api_base": "https://api.mistral.ai/v1"
+    },
+    "groq": {
+      "api_base": "https://api.groq.com/openai/v1"
+    },
+    "moonshotai": {
+        "api_base": "https://api.moonshot.cn/v1"
+    }
+  },
+  "prompt_templates": {
+    "explain_code": "Explain the following code snippet:\n\n---\n\n{code}\n\n---\n\nProvide a clear and concise explanation.",
+    "generate_tests": "Generate unit tests for the following code snippet using the {framework} framework:\n\n---\n\n{code}\n\n---\n\nPlease cover the main functionality and edge cases.",
+    "refactor_code": "Refactor the following code to improve its readability, performance, and maintainability:\n\n---\n\n{code}\n\n---\n\nProvide the refactored code and a brief explanation of the changes."
+  }
+}
