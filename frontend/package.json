@@ -12,15 +12,23 @@
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
     "@tailwindcss/postcss": "^4.1.12",
+    "@types/node": "^24.3.0",
     "autoprefixer": "^10.4.21",
     "axios": "^1.11.0",
     "framer-motion": "^12.23.12",
-    "lucide-react": "^0.542.0",
+    "lucide-react": "^0.503.0",
     "postcss": "^8.5.6",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "react-hot-toast": "^2.6.0",
     "react-resizable-panels": "^3.0.5",
-    "tailwindcss": "^4.1.12"
+    "react-tooltip": "^5.28.1",
+    "tailwindcss": "^4.1.12",
+    "xterm": "^5.3.0",
+    "xterm-addon-fit": "^0.8.0",
+    "xterm-addon-web-links": "^0.9.0",
+    "xterm-for-react": "^1.0.4",
+    "zustand": "^5.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",

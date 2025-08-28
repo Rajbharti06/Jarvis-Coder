@@ -1,0 +1,38 @@
+{
+  "default_model": "deepseek-coder-v2:latest",
+  "api_keys": {
+    "openai": "",
+    "anthropic": "",
+    "mistral": "",
+    "groq": "",
+    "moonshotai": ""
+  },
+  "local_models": {
+    "deepseek-coder-v2": "deepseek-coder-v2:latest",
+    "codellama": "codellama:latest",
+    "mistral": "mistral:latest",
+    "llama2": "llama2:latest"
+  },
+  "llm_providers": {
+    "openai": {
+      "api_base": "https://api.openai.com/v1"
+    },
+    "anthropic": {
+      "api_base": "https://api.anthropic.com"
+    },
+    "mistral": {
+      "api_base": "https://api.mistral.ai/v1"
+    },
+    "groq": {
+      "api_base": "https://api.groq.com/openai/v1"
+    },
+    "moonshotai": {
+      "api_base": "https://api.moonshot.cn/v1"
+    }
+  },
+  "prompt_templates": {
+    "code_generation": "You are an expert software developer. Generate clean, efficient, and well-documented code for the following task:\n\n{task}\n\nProvide only the code without explanations unless specifically asked.",
+    "code_explanation": "Explain the following code in detail:\n\n{code}\n\nFocus on the logic, algorithms used, and potential optimizations.",
+    "debugging": "Debug the following code and fix any issues:\n\n{code}\n\nExplain what was wrong and how you fixed it."
+  }
+}

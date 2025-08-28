@@ -1,0 +1,30 @@
+{
+  "api_keys": {
+    "openai": "",
+    "anthropic": "",
+    "mistral": "",
+    "groq": "",
+    "moonshotai": ""
+  },
+  "default_model": "deepseek-coder-v2:latest",
+  "local_models": {
+    "deepseek-coder-v2": "deepseek-coder-v2:latest"
+  },
+  "llm_providers": {
+    "openai": {
+      "api_base": "https://api.openai.com/v1"
+    },
+    "anthropic": {
+      "api_base": "https://api.anthropic.com"
+    },
+    "mistral": {
+      "api_base": "https://api.mistral.ai/v1"
+    },
+    "groq": {
+      "api_base": "https://api.groq.com/openai/v1"
+    },
+    "moonshotai": {
+      "api_base": "https://api.moonshot.cn/v1"
+    }
+  }
+}

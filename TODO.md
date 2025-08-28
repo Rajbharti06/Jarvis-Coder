@@ -1,43 +1,69 @@
-# JARVIS Coder Enhancement Plan
+a# Jarvis Coder - LLM Implementation Plan
 
-## Phase 1: Multi-Model AI Service Enhancement ✅ COMPLETED
-- [x] Enhance `ai_service.py` to support multiple AI providers (Anthropic, Mistral, Groq)
-- [x] Implement provider-specific API handling logic
-- [x] Add model detection and routing logic
-- [x] Update configuration to support new providers
+## Phase 1: Frontend Enhancements
 
-## Phase 2: Command Processor Updates ✅ COMPLETED
-- [x] Modify command processor to accept model parameter
-- [x] Update command handlers to pass model information
-- [x] Add model selection capability via `/model` command
+### 1. ChatWindow Component
+- [x] Implement message input and display functionality
+- [x] Add real-time streaming support for LLM responses
+- [x] Create message history management
+- [x] Add styling for chat bubbles and user/assistant messages
 
-## Phase 3: Configuration Management ✅ COMPLETED
-- [x] Update config schema to support additional providers
-- [x] Add validation for API keys and endpoints
-- [x] Implement provider fallback mechanism
+### 2. EditorPane Component
+- [x] Integrate Monaco Editor for code editing
+- [x] Add LLM code generation/suggestion features
+- [x] Implement code execution/run functionality
+- [ ] Add file management capabilities
 
-## Phase 4: Testing & Validation ✅ COMPLETED
-- [x] Test each provider with sample commands
-- [x] Validate error handling and fallback behavior
-- [x] Test streaming responses for all providers
+### 3. Sidebar Enhancements
+- [x] Add model selection dropdown
+- [x] Implement API key management
+- [x] Add project/file browser
+- [x] Include settings/configuration panel
 
-## Phase 5: Documentation Updates
-- [ ] Update README with new provider information
-- [ ] Add examples for each provider
-- [ ] Document configuration options
+## Phase 2: Backend API Development
 
-## Current Progress:
-- ✅ Project analysis completed
-- ✅ Enhancement plan created
-- ✅ Multi-provider AI service implemented
-- ✅ Command processor updated
-- ✅ Backend server running successfully
-- ✅ All functionality tested and working
-- 🔄 Documentation updates
+### 1. Chat API Endpoint
+- [x] Create `/chat` endpoint for message processing
+- [x] Implement streaming response support
+- [ ] Add message history persistence
 
-## Test Results:
-- ✅ OpenAI integration working (requires valid API key)
-- ✅ Ollama local models working perfectly
-- ✅ Model routing and detection working correctly
-- ✅ Error handling functioning properly
-- ✅ Streaming responses working for all providers
+### 2. Code Generation API
+- [x] Create `/generate` endpoint for code generation
+- [x] Add code completion/suggestion endpoints
+- [x] Implement code execution endpoints
+
+### 3. Model Management
+- [ ] Add endpoints for model listing/selection
+- [ ] Implement API key validation/storage
+- [ ] Add provider configuration management
+
+## Phase 3: AI Service Integration
+
+### 1. Enhance AI Service
+- [ ] Ensure proper error handling for LLM failures
+- [ ] Add fallback mechanisms for offline mode
+- [ ] Implement model-specific optimizations
+
+### 2. Streaming Support
+- [ ] Implement proper async streaming
+- [ ] Add chunk processing and formatting
+- [ ] Handle connection timeouts and retries
+
+## Phase 4: Testing & Deployment
+
+### 1. Frontend Testing
+- [ ] Unit tests for components
+- [ ] Integration tests for LLM interactions
+- [ ] E2E testing for user workflows
+
+### 2. Backend Testing
+- [ ] API endpoint testing
+- [ ] LLM integration testing
+- [ ] Database interaction testing
+
+### 3. Deployment
+- [ ] Docker containerization
+- [ ] Environment configuration
+- [ ] Production deployment setup
+
+## Current Status: Phase 1 - Frontend Enhancements completed, moving to Phase 2 - Backend API Development

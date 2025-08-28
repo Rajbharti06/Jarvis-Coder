@@ -51,7 +51,7 @@ class AIService:
             'kimi-k2-instruct': 'moonshotai',
             'mistral': 'ollama',
             'gpt-oss:20b': 'ollama',
-            'deepseek-coder': 'ollama',
+            'deepseek-coder-v2': 'ollama',
             'codellama': 'ollama',
             'llama2': 'ollama',
             'phi3': 'ollama'

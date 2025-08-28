@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
 # Import your API routers here
-from backend.api import auth #, chat, models, keys, projects
+from backend.api import auth, chat, execute, files, terminal #, models, keys, projects
 from backend.db.base import Base
 from backend.db.session import engine
 
@@ -29,7 +29,10 @@ def create_application() -> FastAPI:
     )
     # Include your API routers here
     application.include_router(auth.router, prefix="/auth", tags=["auth"])
-    # application.include_router(chat.router, prefix="/chat", tags=["chat"])
+    application.include_router(chat.router, prefix="/chat", tags=["chat"])
+    application.include_router(execute.router, prefix="/execute", tags=["execute"])
+    application.include_router(files.router, prefix="/files", tags=["files"])
+    application.include_router(terminal.router, prefix="/terminal", tags=["terminal"])
     # application.include_router(models.router, prefix="/models", tags=["models"])
     # application.include_router(keys.router, prefix="/keys", tags=["keys"])
     # application.include_router(projects.router, prefix="/projects", tags=["projects"])

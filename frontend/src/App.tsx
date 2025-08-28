@@ -1,31 +1,38 @@
-import React from 'react';
-import { PanelGroup, Panel, PanelResizeHandle } from 'react-resizable-panels';
+// import React from 'react';
+import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { ChatWindow } from './components/Chat/ChatWindow'; // Will create this next
-import { EditorPane } from './components/Editor/EditorPane'; // Will create this next
-import { Sidebar } from './components/Sidebar/Sidebar'; // Will create this next
+import IDE from './components/IDE/IDE';
+import './App.css';
 
 function App() {
   return (
     <ThemeProvider>
-      <div className="flex h-screen w-screen bg-transparent text-white">
-        <PanelGroup direction="horizontal">
-          <Panel defaultSize={20} minSize={10} maxSize={30}>
-            <Sidebar />
-          </Panel>
-          <PanelResizeHandle className="w-2 bg-gray-700 hover:bg-gray-600 transition-colors duration-200" />
-          <Panel defaultSize={80}>
-            <PanelGroup direction="vertical">
-              <Panel defaultSize={60}>
-                <ChatWindow />
-              </Panel>
-              <PanelResizeHandle className="h-2 bg-gray-700 hover:bg-gray-600 transition-colors duration-200" />
-              <Panel defaultSize={40}>
-                <EditorPane />
-              </Panel>
-            </PanelGroup>
-          </Panel>
-        </PanelGroup>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-blue-900 dark:to-indigo-900 transition-colors duration-300">
+        <IDE />
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              color: '#1f2937',
+            },
+            success: {
+              iconTheme: {
+                primary: '#10b981',
+                secondary: 'white',
+              },
+            },
+            error: {
+              iconTheme: {
+                primary: '#ef4444',
+                secondary: 'white',
+              },
+            },
+          }}
+        />
       </div>
     </ThemeProvider>
   );
