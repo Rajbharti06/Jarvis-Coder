@@ -5,7 +5,6 @@ from pydantic import BaseModel, RootModel
 from typing import Dict, Optional, Any
 
 class ApiKeys(RootModel):
-    # Make API keys more flexible to support dynamic providers
     root: Dict[str, Optional[str]] = {}
 
 class Config(BaseModel):
@@ -14,6 +13,7 @@ class Config(BaseModel):
     local_models: Dict[str, str]
     llm_providers: Dict[str, Any] = {}
     prompt_templates: Dict[str, str] = {}
+
 def load_config() -> Config:
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.abspath(os.path.join(script_dir, os.pardir, os.pardir))
@@ -34,11 +34,18 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o-mini"
     openai_api_key: str = ""
     
+    encryption_secret: str
+    jwt_secret_key: str
+
     app_config: Config = load_config()
 
     class Config:
-        env_file = ".env"
-        # Allow extra fields to support dynamic settings
+        env_file = os.path.join(os.path.dirname(__file__), ".env")
         extra = "allow"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        print("Loaded encryption_secret:", self.encryption_secret)
+        print("Loaded jwt_secret_key:", self.jwt_secret_key)
 
 settings = Settings()

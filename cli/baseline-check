@@ -1,0 +1,13 @@
+#!/usr/bin/env python
+"""
+Baseline Check - Command line utility for checking web code against Baseline compatibility
+"""
+import os
+import sys
+
+# Add the parent directory to sys.path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from cli.baseline_cli import main
+
+if __name__ == "__main__":
+    main()

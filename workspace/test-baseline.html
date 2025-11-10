@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baseline Test</title>
+    <style>
+        /* CSS Grid - widely supported but might have compatibility issues in older browsers */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        /* CSS Custom Properties (variables) - not supported in IE11 */
+        :root {
+            --main-color: #3498db;
+            --secondary-color: #2ecc71;
+        }
+        
+        .custom-prop-example {
+            color: var(--main-color);
+            background-color: var(--secondary-color);
+        }
+        
+        /* Backdrop filter - limited browser support */
+        .backdrop-example {
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body>
+    <h1>Baseline Compatibility Test</h1>
+    
+    <div class="grid-container">
+        <div>Grid Item 1</div>
+        <div>Grid Item 2</div>
+        <div>Grid Item 3</div>
+    </div>
+    
+    <div class="custom-prop-example">
+        This uses CSS custom properties
+    </div>
+    
+    <div class="backdrop-example">
+        This uses backdrop-filter
+    </div>
+    
+    <script>
+        // Newer JavaScript features
+        
+        // Optional chaining - not supported in older browsers
+        const user = { 
+            profile: { 
+                name: 'Test User' 
+            } 
+        };
+        const userName = user?.profile?.name;
+        
+        // Nullish coalescing - not supported in older browsers
+        const defaultName = userName ?? 'Anonymous';
+        
+        // Async/await - might need polyfills for older browsers
+        async function fetchData() {
+            try {
+                const response = await fetch('https://api.example.com/data');
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+        
+        // Intersection Observer API - not supported in IE
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    console.log('Element is visible');
+                }
+            });
+        });
+        
+        // Web Share API - limited browser support
+        if (navigator.share) {
+            document.querySelector('button').addEventListener('click', async () => {
+                try {
+                    await navigator.share({
+                        title: 'Baseline Test',
+                        text: 'Testing Web Share API',
+                        url: window.location.href
+                    });
+                } catch (error) {
+                    console.error('Error sharing:', error);
+                }
+            });
+        }
+    </script>
+    
+    <button>Share this page</button>
+</body>
+</html>

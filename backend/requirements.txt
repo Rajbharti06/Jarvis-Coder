@@ -15,3 +15,7 @@ groq
 together
 pyjwt[crypto]
 ptyprocess
+requests
+beautifulsoup4
+cssutils
+esprima

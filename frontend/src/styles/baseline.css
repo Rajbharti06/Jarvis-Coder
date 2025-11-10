@@ -1,0 +1,293 @@
+/**
+ * Baseline Feature Highlighting Styles
+ * 
+ * CSS classes for Monaco Editor decorations and UI components
+ * related to Baseline feature checking.
+ */
+
+/* Monaco Editor Decorations */
+.baseline-baseline_high {
+  border-bottom: 2px solid #22c55e;
+  border-radius: 2px;
+}
+
+.baseline-baseline_low {
+  border-bottom: 2px solid #f59e0b;
+  border-radius: 2px;
+}
+
+.baseline-not_baseline {
+  border-bottom: 2px solid #ef4444;
+  border-radius: 2px;
+}
+
+/* Inline decorations for text highlighting */
+.baseline-inline-baseline_high {
+  background-color: rgba(34, 197, 94, 0.1);
+  border-radius: 2px;
+}
+
+.baseline-inline-baseline_low {
+  background-color: rgba(245, 158, 11, 0.1);
+  border-radius: 2px;
+}
+
+.baseline-inline-not_baseline {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-radius: 2px;
+}
+
+/* Margin indicators */
+.baseline-margin-baseline_high {
+  border-left: 3px solid #22c55e;
+}
+
+.baseline-margin-baseline_low {
+  border-left: 3px solid #f59e0b;
+}
+
+.baseline-margin-baseline_not_baseline {
+  border-left: 3px solid #ef4444;
+}
+
+/* Glyph margin icons */
+.baseline-glyph-baseline_high {
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="%2322c55e" opacity="0.8"/><path d="M5 8l2 2 4-4" stroke="white" stroke-width="2" fill="none"/></svg>') center center no-repeat;
+}
+
+.baseline-glyph-baseline_low {
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="%23f59e0b" opacity="0.8"/><path d="M8 4v6M8 12h.01" stroke="white" stroke-width="2" fill="none"/></svg>') center center no-repeat;
+}
+
+.baseline-glyph-not_baseline {
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="%23ef4444" opacity="0.8"/><path d="M5 5l6 6M5 11l6-6" stroke="white" stroke-width="2" fill="none"/></svg>') center center no-repeat;
+}
+
+/* Baseline Status Panel */
+.baseline-status-panel {
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 12px;
+  margin: 8px 0;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 12px;
+}
+
+.baseline-status-panel.light {
+  background: #f8f9fa;
+  border-color: #e9ecef;
+  color: #212529;
+}
+
+.baseline-status-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.baseline-status-safe {
+  color: #22c55e;
+}
+
+.baseline-status-caution {
+  color: #f59e0b;
+}
+
+.baseline-status-risky {
+  color: #ef4444;
+}
+
+.baseline-feature-list {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 8px;
+}
+
+.baseline-feature-item {
+  display: flex;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.baseline-feature-item:last-child {
+  border-bottom: none;
+}
+
+.baseline-feature-icon {
+  margin-right: 8px;
+  font-size: 14px;
+}
+
+.baseline-feature-name {
+  flex: 1;
+  font-weight: 500;
+}
+
+.baseline-feature-line {
+  color: #888;
+  font-size: 11px;
+  margin-left: 8px;
+}
+
+/* AI Suggestion Styles */
+.baseline-suggestion {
+  display: flex;
+  padding: 6px 8px;
+  margin-top: 4px;
+  background: rgba(59, 130, 246, 0.1);
+  border-left: 2px solid #3b82f6;
+  border-radius: 3px;
+  font-size: 11px;
+  line-height: 1.4;
+  width: 100%;
+}
+
+.baseline-suggestion-icon {
+  margin-right: 6px;
+  font-size: 14px;
+}
+
+.baseline-suggestion-text {
+  color: #e2e8f0;
+}
+
+.light .baseline-suggestion-text {
+  color: #334155;
+}
+
+/* Tooltip Styles */
+.baseline-tooltip {
+  background: #2d2d2d;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 8px 12px;
+  color: #fff;
+  font-size: 12px;
+  max-width: 300px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.baseline-tooltip-header {
+  font-weight: 600;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.baseline-tooltip-description {
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.baseline-tooltip-support {
+  font-size: 11px;
+  color: #ccc;
+}
+
+.baseline-tooltip-support-item {
+  margin: 2px 0;
+}
+
+.baseline-tooltip-suggestion {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #444;
+  font-style: italic;
+  color: #a0a0a0;
+}
+
+/* Loading States */
+.baseline-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  color: #888;
+}
+
+.baseline-loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #333;
+  border-top: 2px solid #666;
+  border-radius: 50%;
+  animation: baseline-spin 1s linear infinite;
+  margin-right: 8px;
+}
+
+@keyframes baseline-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Error States */
+.baseline-error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid #ef4444;
+  border-radius: 4px;
+  padding: 8px 12px;
+  color: #ef4444;
+  font-size: 12px;
+  margin: 8px 0;
+}
+
+/* Summary Stats */
+.baseline-summary {
+  display: flex;
+  gap: 16px;
+  margin: 8px 0;
+  font-size: 11px;
+}
+
+.baseline-summary-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.baseline-summary-count {
+  font-weight: 600;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .baseline-status-panel {
+    padding: 8px;
+    font-size: 11px;
+  }
+  
+  .baseline-summary {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .baseline-tooltip {
+    max-width: 250px;
+  }
+}
+
+/* Dark Theme Overrides */
+.monaco-editor.vs-dark .baseline-tooltip {
+  background: #1e1e1e;
+  border-color: #333;
+}
+
+/* Light Theme Overrides */
+.monaco-editor.vs .baseline-tooltip {
+  background: #fff;
+  border-color: #ccc;
+  color: #333;
+}
+
+.monaco-editor.vs .baseline-tooltip-support {
+  color: #666;
+}
+
+.monaco-editor.vs .baseline-tooltip-suggestion {
+  border-top-color: #ccc;
+  color: #666;
+}

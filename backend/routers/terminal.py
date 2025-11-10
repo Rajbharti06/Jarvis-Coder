@@ -1,0 +1,379 @@
+"""
+Terminal router for Jarvis Terminal.
+Handles command execution, terminal management, and safety measures.
+"""
+
+import os
+import asyncio
+import subprocess
+import json
+import uuid
+from typing import Dict, List, Optional, Any
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel
+import logging
+import shlex
+import platform
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/terminal", tags=["terminal"])
+
+class CommandRequest(BaseModel):
+    command: str
+    cwd: Optional[str] = None
+    env: Optional[Dict[str, str]] = None
+    timeout: Optional[int] = 30
+
+class CommandResponse(BaseModel):
+    success: bool
+    stdout: str
+    stderr: str
+    exit_code: int
+    execution_time: float
+    command_id: str
+
+class TerminalSession(BaseModel):
+    session_id: str
+    cwd: str
+    env: Dict[str, str]
+    history: List[Dict[str, Any]]
+    created_at: float
+
+class TerminalManager:
+    """Manages terminal sessions and command execution."""
+    
+    def __init__(self):
+        self.sessions: Dict[str, TerminalSession] = {}
+        self.active_processes: Dict[str, subprocess.Popen] = {}
+        
+        # Dangerous commands that should be blocked or require confirmation
+        self.dangerous_commands = {
+            'rm', 'del', 'rmdir', 'format', 'fdisk', 'mkfs',
+            'dd', 'shutdown', 'reboot', 'halt', 'poweroff',
+            'sudo rm', 'sudo dd', 'sudo mkfs', 'sudo fdisk'
+        }
+        
+        # Commands that are generally safe
+        self.safe_commands = {
+            'ls', 'dir', 'pwd', 'cd', 'cat', 'type', 'echo',
+            'grep', 'find', 'which', 'where', 'ps', 'top',
+            'git', 'npm', 'pip', 'python', 'node', 'code',
+            'curl', 'wget', 'ping', 'tracert', 'nslookup'
+        }
+    
+    def create_session(self, cwd: Optional[str] = None) -> str:
+        """Create a new terminal session."""
+        session_id = str(uuid.uuid4())
+        
+        if cwd is None:
+            cwd = os.getcwd()
+        elif not os.path.exists(cwd):
+            cwd = os.getcwd()
+        
+        session = TerminalSession(
+            session_id=session_id,
+            cwd=cwd,
+            env=dict(os.environ),
+            history=[],
+            created_at=asyncio.get_event_loop().time()
+        )
+        
+        self.sessions[session_id] = session
+        logger.info(f"Created terminal session {session_id} in {cwd}")
+        return session_id
+    
+    def get_session(self, session_id: str) -> Optional[TerminalSession]:
+        """Get terminal session by ID."""
+        return self.sessions.get(session_id)
+    
+    def is_command_safe(self, command: str) -> tuple[bool, str]:
+        """
+        Check if a command is safe to execute.
+        
+        Returns:
+            tuple: (is_safe, reason)
+        """
+        command_lower = command.lower().strip()
+        
+        # Check for dangerous commands
+        for dangerous in self.dangerous_commands:
+            if command_lower.startswith(dangerous):
+                return False, f"Dangerous command detected: {dangerous}"
+        
+        # Check for suspicious patterns
+        suspicious_patterns = [
+            '> /dev/', '> nul', 'format c:', 'del /s', 'rm -rf /',
+            'sudo su', 'chmod 777', 'chown root'
+        ]
+        
+        for pattern in suspicious_patterns:
+            if pattern in command_lower:
+                return False, f"Suspicious pattern detected: {pattern}"
+        
+        return True, "Command appears safe"
+    
+    async def execute_command(
+        self,
+        command: str,
+        session_id: Optional[str] = None,
+        cwd: Optional[str] = None,
+        env: Optional[Dict[str, str]] = None,
+        timeout: int = 30
+    ) -> CommandResponse:
+        """Execute a command safely."""
+        command_id = str(uuid.uuid4())
+        start_time = asyncio.get_event_loop().time()
+        
+        try:
+            # Get or create session
+            if session_id:
+                session = self.get_session(session_id)
+                if not session:
+                    raise HTTPException(status_code=404, detail="Session not found")
+            else:
+                session_id = self.create_session(cwd)
+                session = self.get_session(session_id)
+            
+            # Use session's cwd and env if not provided
+            if cwd is None:
+                cwd = session.cwd
+            if env is None:
+                env = session.env.copy()
+            
+            # Safety check
+            is_safe, reason = self.is_command_safe(command)
+            if not is_safe:
+                logger.warning(f"Blocked unsafe command: {command} - {reason}")
+                return CommandResponse(
+                    success=False,
+                    stdout="",
+                    stderr=f"Command blocked for safety: {reason}",
+                    exit_code=-1,
+                    execution_time=0.0,
+                    command_id=command_id
+                )
+            
+            # Prepare command for execution
+            if platform.system() == "Windows":
+                # Use PowerShell on Windows
+                full_command = ["powershell", "-Command", command]
+            else:
+                # Use bash on Unix-like systems
+                full_command = ["bash", "-c", command]
+            
+            # Execute command
+            process = await asyncio.create_subprocess_exec(
+                *full_command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=cwd,
+                env=env
+            )
+            
+            # Store active process
+            self.active_processes[command_id] = process
+            
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    process.communicate(),
+                    timeout=timeout
+                )
+                
+                stdout_str = stdout.decode('utf-8', errors='replace') if stdout else ""
+                stderr_str = stderr.decode('utf-8', errors='replace') if stderr else ""
+                exit_code = process.returncode
+                
+            except asyncio.TimeoutError:
+                process.kill()
+                await process.wait()
+                stdout_str = ""
+                stderr_str = f"Command timed out after {timeout} seconds"
+                exit_code = -1
+            
+            finally:
+                # Remove from active processes
+                self.active_processes.pop(command_id, None)
+            
+            execution_time = asyncio.get_event_loop().time() - start_time
+            
+            # Update session history
+            session.history.append({
+                "command": command,
+                "stdout": stdout_str,
+                "stderr": stderr_str,
+                "exit_code": exit_code,
+                "execution_time": execution_time,
+                "timestamp": start_time,
+                "command_id": command_id
+            })
+            
+            # Update session cwd if command was 'cd'
+            if command.strip().startswith('cd ') and exit_code == 0:
+                try:
+                    new_cwd = command.strip()[3:].strip()
+                    if new_cwd:
+                        if os.path.isabs(new_cwd):
+                            session.cwd = new_cwd
+                        else:
+                            session.cwd = os.path.join(session.cwd, new_cwd)
+                        session.cwd = os.path.abspath(session.cwd)
+                except Exception as e:
+                    logger.warning(f"Failed to update cwd: {e}")
+            
+            return CommandResponse(
+                success=exit_code == 0,
+                stdout=stdout_str,
+                stderr=stderr_str,
+                exit_code=exit_code,
+                execution_time=execution_time,
+                command_id=command_id
+            )
+            
+        except Exception as e:
+            execution_time = asyncio.get_event_loop().time() - start_time
+            logger.error(f"Command execution failed: {e}")
+            
+            return CommandResponse(
+                success=False,
+                stdout="",
+                stderr=f"Execution error: {str(e)}",
+                exit_code=-1,
+                execution_time=execution_time,
+                command_id=command_id
+            )
+    
+    def kill_command(self, command_id: str) -> bool:
+        """Kill a running command."""
+        process = self.active_processes.get(command_id)
+        if process:
+            try:
+                process.kill()
+                self.active_processes.pop(command_id, None)
+                return True
+            except Exception as e:
+                logger.error(f"Failed to kill command {command_id}: {e}")
+        return False
+    
+    def get_session_info(self, session_id: str) -> Optional[Dict[str, Any]]:
+        """Get session information."""
+        session = self.get_session(session_id)
+        if not session:
+            return None
+        
+        return {
+            "session_id": session.session_id,
+            "cwd": session.cwd,
+            "history_count": len(session.history),
+            "created_at": session.created_at,
+            "recent_commands": [
+                {
+                    "command": cmd["command"],
+                    "exit_code": cmd["exit_code"],
+                    "timestamp": cmd["timestamp"]
+                }
+                for cmd in session.history[-10:]  # Last 10 commands
+            ]
+        }
+
+# Global terminal manager
+terminal_manager = TerminalManager()
+
+@router.post("/execute", response_model=CommandResponse)
+async def execute_command(request: CommandRequest):
+    """Execute a terminal command."""
+    return await terminal_manager.execute_command(
+        command=request.command,
+        cwd=request.cwd,
+        env=request.env,
+        timeout=request.timeout or 30
+    )
+
+@router.post("/sessions", response_model=Dict[str, str])
+async def create_session(cwd: Optional[str] = None):
+    """Create a new terminal session."""
+    session_id = terminal_manager.create_session(cwd)
+    return {"session_id": session_id}
+
+@router.get("/sessions/{session_id}")
+async def get_session_info(session_id: str):
+    """Get session information."""
+    info = terminal_manager.get_session_info(session_id)
+    if not info:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return info
+
+@router.post("/sessions/{session_id}/execute", response_model=CommandResponse)
+async def execute_command_in_session(session_id: str, request: CommandRequest):
+    """Execute a command in a specific session."""
+    return await terminal_manager.execute_command(
+        command=request.command,
+        session_id=session_id,
+        cwd=request.cwd,
+        env=request.env,
+        timeout=request.timeout or 30
+    )
+
+@router.delete("/commands/{command_id}")
+async def kill_command(command_id: str):
+    """Kill a running command."""
+    success = terminal_manager.kill_command(command_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Command not found or already finished")
+    return {"message": "Command killed successfully"}
+
+@router.websocket("/ws/{session_id}")
+async def terminal_websocket(websocket: WebSocket, session_id: str):
+    """WebSocket endpoint for real-time terminal interaction."""
+    await websocket.accept()
+    
+    # Get or create session
+    session = terminal_manager.get_session(session_id)
+    if not session:
+        session_id = terminal_manager.create_session()
+        session = terminal_manager.get_session(session_id)
+    
+    try:
+        while True:
+            # Receive command from client
+            data = await websocket.receive_text()
+            command_data = json.loads(data)
+            
+            command = command_data.get("command", "")
+            if not command:
+                continue
+            
+            # Execute command
+            result = await terminal_manager.execute_command(
+                command=command,
+                session_id=session_id,
+                timeout=command_data.get("timeout", 30)
+            )
+            
+            # Send result back to client
+            await websocket.send_text(json.dumps({
+                "type": "command_result",
+                "data": result.dict()
+            }))
+            
+            # Send session info
+            session_info = terminal_manager.get_session_info(session_id)
+            await websocket.send_text(json.dumps({
+                "type": "session_info",
+                "data": session_info
+            }))
+            
+    except WebSocketDisconnect:
+        logger.info(f"WebSocket disconnected for session {session_id}")
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+        await websocket.close()
+
+@router.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {
+        "status": "healthy",
+        "active_sessions": len(terminal_manager.sessions),
+        "active_processes": len(terminal_manager.active_processes)
+    }

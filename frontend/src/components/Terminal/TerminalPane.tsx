@@ -1,79 +1,75 @@
-import React, { useEffect, useRef } from 'react';
-import { XTerm } from 'xterm-for-react';
-import { FitAddon } from 'xterm-addon-fit';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 
 export const TerminalPane: React.FC = () => {
-  const xtermRef = useRef<any>(null);
+  const [input, setInput] = useState('');
+  const [output, setOutput] = useState<string[]>(['Welcome to Jarvis Coder Terminal']);
+  const [ws, setWs] = useState<WebSocket | null>(null);
+  const outputEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const { theme } = useTheme();
 
   useEffect(() => {
-    const fitAddon = new FitAddon();
-    if (xtermRef.current && xtermRef.current.terminal) {
-      xtermRef.current.terminal.loadAddon(fitAddon);
-      fitAddon.fit();
-    }
+    // Initialize WebSocket connection
+    const socket = new WebSocket('ws://localhost:8000/terminal/ws');
+    setWs(socket);
 
-    const ws = new WebSocket('ws://127.0.0.1:8000/terminal/ws');
-
-    ws.onopen = () => {
-      if (xtermRef.current && xtermRef.current.terminal) {
-        xtermRef.current.terminal.writeln('Terminal connected.');
-      }
+    socket.onmessage = (event) => {
+      setOutput(prev => [...prev, event.data]);
     };
 
-    ws.onmessage = (event) => {
-      if (xtermRef.current && xtermRef.current.terminal) {
-        xtermRef.current.terminal.write(event.data);
-      }
+    socket.onerror = (error) => {
+      setOutput(prev => [...prev, 'Connection error']);
+      console.error('WebSocket error:', error);
     };
 
-    ws.onclose = () => {
-      if (xtermRef.current && xtermRef.current.terminal) {
-        xtermRef.current.terminal.writeln('\r\nTerminal disconnected.');
-      }
+    socket.onclose = () => {
+      setOutput(prev => [...prev, 'Connection closed']);
     };
-
-    ws.onerror = (error) => {
-      console.error('WebSocket Error:', error);
-      if (xtermRef.current && xtermRef.current.terminal) {
-        xtermRef.current.terminal.writeln('\r\nAn error occurred with the terminal connection.');
-      }
-    };
-
-    if (xtermRef.current && xtermRef.current.terminal) {
-        xtermRef.current.terminal.onData((data: string) => {
-            ws.send(data);
-        });
-    }
-
-    const handleResize = () => {
-        fitAddon.fit();
-    }
-
-    window.addEventListener('resize', handleResize);
 
     return () => {
-      ws.close();
-      window.removeEventListener('resize', handleResize);
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.close();
+      }
     };
   }, []);
 
+  useEffect(() => {
+    // Auto-scroll to bottom when output updates
+    outputEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [output]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(input);
+      setOutput(prev => [...prev, `$ ${input}`]);
+      setInput('');
+    } else {
+      setOutput(prev => [...prev, 'Not connected to server']);
+    }
+  };
+
   return (
-    <div className="h-full w-full p-2 bg-black">
-        <XTerm
-            ref={xtermRef}
-            options={{
-                cursorBlink: true,
-                theme: theme === 'dark' ? {
-                    background: '#000000',
-                    foreground: '#ffffff'
-                } : {
-                    background: '#ffffff',
-                    foreground: '#000000'
-                }
-            }}
-        />
+    <div className={`h-full w-full p-4 ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-white text-black'}`}>
+      <div className="h-full flex flex-col">
+        <div className="flex-grow overflow-y-auto mb-2 font-mono text-sm">
+          {output.map((line, i) => (
+            <div key={i}>{line}</div>
+          ))}
+          <div ref={outputEndRef} />
+        </div>
+        <form onSubmit={handleSubmit} className="flex">
+          <span className="mr-2">$</span>
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            className={`flex-grow bg-transparent outline-none resize-none ${theme === 'dark' ? 'text-green-400' : 'text-green-800'}`}
+            rows={1}
+          />
+        </form>
+      </div>
     </div>
   );
 };

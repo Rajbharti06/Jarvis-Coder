@@ -3,7 +3,8 @@ from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
 # Import your API routers here
-from backend.api import auth, chat, execute, files, terminal #, models, keys, projects
+from backend.api import auth, chat, execute, files, baseline, projects, trae_cursor_blackbox, models, keys, code_assistant
+from backend.routers import terminal, context, offline
 from backend.db.base import Base
 from backend.db.session import engine
 
@@ -33,9 +34,15 @@ def create_application() -> FastAPI:
     application.include_router(execute.router, prefix="/execute", tags=["execute"])
     application.include_router(files.router, prefix="/files", tags=["files"])
     application.include_router(terminal.router, prefix="/terminal", tags=["terminal"])
-    # application.include_router(models.router, prefix="/models", tags=["models"])
-    # application.include_router(keys.router, prefix="/keys", tags=["keys"])
-    # application.include_router(projects.router, prefix="/projects", tags=["projects"])
+    application.include_router(context.router, prefix="/context", tags=["context"])
+    application.include_router(baseline.router, prefix="/baseline", tags=["baseline"])
+    application.include_router(projects.router, prefix="/projects", tags=["projects"])
+    application.include_router(trae_cursor_blackbox.router, prefix="/ai-assistant", tags=["ai-assistant"])
+    application.include_router(offline.router, prefix="/offline", tags=["offline"])
+    application.include_router(models.router, prefix="/api/models", tags=["models"])
+    application.include_router(keys.router, prefix="/api/keys", tags=["keys"])
+    # Code Assistant endpoints (prefixed under /api/ai for NGINX compatibility)
+    application.include_router(code_assistant.router, prefix="/api/ai", tags=["ai"])
 
     @application.get("/", tags=["Root"])
     async def read_root():

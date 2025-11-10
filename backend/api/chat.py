@@ -1,12 +1,40 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.responses import StreamingResponse
 from typing import AsyncGenerator
 import asyncio
 import json
 
-from backend.services.ai_service import ai_service
+# Import AI service - for now we'll create a simple mock
+# from backend.services.ai_service import ai_service
 
 router = APIRouter()
+connections = set()
+
+# Simple mock AI service for testing
+class MockAIService:
+    async def generate_response(self, message: str, stream: bool = False):
+        if stream:
+            for word in f"Echo: {message}".split():
+                yield word + " "
+                await asyncio.sleep(0.1)
+        else:
+            yield f"Echo: {message}"
+
+ai_service = MockAIService()
+
+@router.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    connections.add(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            # Echo message to all connected clients
+            for connection in connections:
+                if connection != websocket:
+                    await connection.send_text(f"Message from client: {data}")
+    except WebSocketDisconnect:
+        connections.remove(websocket)
 
 @router.post("/chat")
 async def chat_endpoint(message: dict):

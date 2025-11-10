@@ -1,0 +1,323 @@
+/* Warp-style Terminal CSS with Glassmorphic Design */
+
+.warp-terminal-container {
+  @apply relative w-full h-full overflow-hidden;
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.1) 0%, 
+    rgba(255, 255, 255, 0.05) 100%);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.warp-terminal-header {
+  @apply flex items-center justify-between px-4 py-3 border-b border-white/10;
+  background: linear-gradient(90deg, 
+    rgba(255, 255, 255, 0.1) 0%, 
+    rgba(255, 255, 255, 0.05) 100%);
+  backdrop-filter: blur(10px);
+}
+
+.warp-terminal-title {
+  @apply flex items-center gap-2 text-sm font-medium;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.warp-terminal-icon {
+  @apply text-lg;
+  filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.5));
+}
+
+.connection-status {
+  @apply flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.connection-status.online {
+  color: #51cf66;
+  box-shadow: 0 0 10px rgba(81, 207, 102, 0.3);
+}
+
+.connection-status.offline {
+  color: #ff6b6b;
+  box-shadow: 0 0 10px rgba(255, 107, 107, 0.3);
+}
+
+.sync-indicator {
+  @apply animate-spin;
+  color: #ffd43b;
+}
+
+.warp-terminal-controls {
+  @apply flex items-center gap-2;
+}
+
+.warp-terminal-control {
+  @apply px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.warp-terminal-control:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.warp-terminal-control.active {
+  background: linear-gradient(135deg, 
+    rgba(0, 255, 136, 0.2) 0%, 
+    rgba(0, 255, 136, 0.1) 100%);
+  border-color: rgba(0, 255, 136, 0.3);
+  color: #00ff88;
+  box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+}
+
+.warp-terminal-help {
+  @apply absolute top-16 left-4 right-4 z-50 p-4 rounded-xl;
+  background: linear-gradient(135deg, 
+    rgba(0, 0, 0, 0.8) 0%, 
+    rgba(0, 0, 0, 0.9) 100%);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.warp-terminal-help h3 {
+  @apply text-lg font-bold mb-4;
+  color: #00ff88;
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+}
+
+.help-grid {
+  @apply grid grid-cols-1 md:grid-cols-2 gap-6;
+}
+
+.help-section h4 {
+  @apply text-sm font-semibold mb-2;
+  color: #74c0fc;
+}
+
+.help-section ul {
+  @apply space-y-1;
+}
+
+.help-section li {
+  @apply text-sm;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.help-section code {
+  @apply px-2 py-1 rounded text-xs font-mono;
+  background: rgba(0, 255, 136, 0.1);
+  color: #00ff88;
+  border: 1px solid rgba(0, 255, 136, 0.2);
+}
+
+.help-section kbd {
+  @apply px-2 py-1 rounded text-xs font-mono;
+  background: rgba(116, 192, 252, 0.1);
+  color: #74c0fc;
+  border: 1px solid rgba(116, 192, 252, 0.2);
+}
+
+.offline-info {
+  @apply mt-4 p-3 rounded-lg text-sm;
+  background: rgba(255, 211, 59, 0.1);
+  border: 1px solid rgba(255, 211, 59, 0.2);
+  color: #ffd43b;
+}
+
+.warp-terminal-content {
+  @apply relative flex-1 overflow-hidden;
+}
+
+.warp-terminal {
+  @apply w-full h-full;
+  background: transparent;
+}
+
+/* Command Suggestions */
+.command-suggestions {
+  @apply absolute bottom-16 left-4 right-4 z-40;
+  background: linear-gradient(135deg, 
+    rgba(0, 0, 0, 0.9) 0%, 
+    rgba(0, 0, 0, 0.95) 100%);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.suggestions-header {
+  @apply flex items-center gap-2 px-4 py-3 border-b border-white/10;
+  color: #00ff88;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.suggestions-icon {
+  @apply text-lg;
+  filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.5));
+}
+
+.suggestions-list {
+  @apply max-h-48 overflow-y-auto;
+}
+
+.suggestion-item {
+  @apply flex items-center justify-between px-4 py-2 cursor-pointer transition-all duration-150;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.suggestion-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.suggestion-item.selected {
+  background: linear-gradient(90deg, 
+    rgba(0, 255, 136, 0.1) 0%, 
+    rgba(0, 255, 136, 0.05) 100%);
+  border-left: 3px solid #00ff88;
+}
+
+.suggestion-command {
+  @apply font-mono text-sm;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.suggestion-hint {
+  @apply text-xs px-2 py-1 rounded;
+  background: rgba(116, 192, 252, 0.1);
+  color: #74c0fc;
+  border: 1px solid rgba(116, 192, 252, 0.2);
+}
+
+.suggestions-footer {
+  @apply px-4 py-2 text-xs text-center;
+  color: rgba(255, 255, 255, 0.6);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.warp-terminal-footer {
+  @apply flex items-center justify-between px-4 py-2 border-t border-white/10;
+  background: linear-gradient(90deg, 
+    rgba(255, 255, 255, 0.05) 0%, 
+    rgba(255, 255, 255, 0.02) 100%);
+  backdrop-filter: blur(10px);
+}
+
+.warp-terminal-status {
+  @apply flex items-center gap-3 text-xs;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.typing-indicator {
+  @apply flex items-center gap-2;
+  color: #00ff88;
+}
+
+.offline-indicator {
+  @apply px-2 py-1 rounded-full;
+  background: rgba(255, 107, 107, 0.1);
+  color: #ff6b6b;
+  border: 1px solid rgba(255, 107, 107, 0.2);
+}
+
+.sync-indicator {
+  @apply px-2 py-1 rounded-full;
+  background: rgba(255, 211, 59, 0.1);
+  color: #ffd43b;
+  border: 1px solid rgba(255, 211, 59, 0.2);
+}
+
+/* Dark mode specific styles */
+.dark .warp-terminal-container {
+  background: linear-gradient(135deg, 
+    rgba(0, 0, 0, 0.8) 0%, 
+    rgba(0, 0, 0, 0.9) 100%);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .warp-terminal-header {
+  background: linear-gradient(90deg, 
+    rgba(0, 0, 0, 0.6) 0%, 
+    rgba(0, 0, 0, 0.4) 100%);
+}
+
+.dark .warp-terminal-control {
+  background: rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.dark .warp-terminal-control:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* Terminal scrollbar styling */
+.warp-terminal ::-webkit-scrollbar {
+  width: 8px;
+}
+
+.warp-terminal ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.warp-terminal ::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 136, 0.3);
+  border-radius: 4px;
+}
+
+.warp-terminal ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 136, 0.5);
+}
+
+/* Animation keyframes */
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(0, 255, 136, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.6);
+  }
+}
+
+.warp-terminal-control.active {
+  animation: glow 2s ease-in-out infinite;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .warp-terminal-container {
+    @apply rounded-lg;
+  }
+  
+  .warp-terminal-header {
+    @apply px-3 py-2;
+  }
+  
+  .warp-terminal-title {
+    @apply text-xs;
+  }
+  
+  .warp-terminal-control {
+    @apply px-2 py-1 text-xs;
+  }
+  
+  .help-grid {
+    @apply grid-cols-1;
+  }
+  
+  .command-suggestions {
+    @apply left-2 right-2;
+  }
+}
