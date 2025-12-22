@@ -199,6 +199,53 @@ class ApiService {
     }
   }
 
+  // Code generation
+  async generateSnippet(prompt: string, language: string = 'typescript'): Promise<{ language: string; code: string }>{
+    try {
+      const response = await this.client.post('/execute/generate/snippet', { prompt, language });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to generate snippet:', error);
+      throw error;
+    }
+  }
+
+  async streamProjectGeneration(
+    name: string,
+    description: string,
+    onEvent: (event: any) => void
+  ): Promise<void> {
+    try {
+      const response = await this.client.post('/execute/generate/project/stream', { name, description }, {
+        responseType: 'stream',
+        onDownloadProgress: (progressEvent) => {
+          const chunk = progressEvent.event.target.responseText;
+          const lines = chunk.split('\n').filter(line => line.startsWith('data:'));
+          for (const line of lines) {
+            try {
+              const payload = line.replace('data: ', '');
+              const data = JSON.parse(payload);
+              onEvent(data);
+            } catch {}
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Streaming project generation failed:', error);
+      throw error;
+    }
+  }
+
+  async refineProject(projectId: string, instruction: string): Promise<{ status: string; path: string }>{
+    try {
+      const response = await this.client.post('/execute/generate/refine', { project_id: projectId, instruction });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to refine project:', error);
+      throw error;
+    }
+  }
+
   // Command execution endpoints
   async executeCommand(request: CommandRequest): Promise<CommandResponse> {
     try {

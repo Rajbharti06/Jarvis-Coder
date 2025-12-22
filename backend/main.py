@@ -1,5 +1,5 @@
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from starlette.middleware.cors import CORSMiddleware
 
 # Import your API routers here
@@ -47,6 +47,19 @@ def create_application() -> FastAPI:
     @application.get("/", tags=["Root"])
     async def read_root():
         return {"message": "Welcome to the Jarvis Coder API!"}
+
+    connections = set()
+
+    @application.websocket("/ws")
+    async def root_websocket(ws: WebSocket):
+        await ws.accept()
+        connections.add(ws)
+        try:
+            while True:
+                data = await ws.receive_text()
+                await ws.send_text(f"Message from client: {data}")
+        except WebSocketDisconnect:
+            connections.discard(ws)
 
     return application
 

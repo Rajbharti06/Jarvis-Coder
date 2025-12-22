@@ -304,17 +304,80 @@ export class AIService extends EventEmitter {
     language: string,
     context?: string
   ): Promise<string[]> {
+    const lang = language || 'code';
+    const ctx = context || 'general';
+    const prompt =
+      `You are an expert ${lang} assistant. Given the following code, ` +
+      `suggest practical next steps for completion, refactoring, and error handling. ` +
+      `Respond ONLY with 3-7 succinct suggestions. Use the format:\n` +
+      `- SUGGESTION: <one-line actionable suggestion>\n` +
+      `If providing code, keep it short and focused.\n\n` +
+      `Context: ${ctx}\n\n` +
+      `${lang} code:\n` +
+      `\`\`\`${lang}\n${code}\n\`\`\`\n`;
+
     try {
-      const response = await apiClient.post('/api/ai/code-suggestions', {
-        code,
-        language,
-        context
+      const resp = await this.sendMessage(prompt, {
+        stream: true,
+        context: 'code_suggestions'
       });
-      return response.data.suggestions;
-    } catch (error) {
-      console.error('Failed to get code suggestions:', error);
-      return [];
+
+      const suggestions: string[] = [];
+
+      if (resp.stream) {
+        let buffer = '';
+        for await (const chunk of resp.stream) {
+          buffer += chunk;
+          const extracted = this.extractSuggestions(buffer);
+          for (const s of extracted) {
+            if (!suggestions.includes(s)) {
+              suggestions.push(s);
+              this.emit('codeSuggestion', { suggestion: s });
+            }
+          }
+          if (suggestions.length >= 7) break;
+        }
+        return suggestions.slice(0, 7);
+      }
+
+      return this.extractSuggestions(resp.content).slice(0, 7);
+    } catch (streamError) {
+      try {
+        const response = await apiClient.post('/api/ai/code-suggestions', {
+          code,
+          language,
+          context
+        });
+        return (response.data?.suggestions ?? []).slice(0, 7);
+      } catch (error) {
+        console.error('Failed to get code suggestions:', error);
+        return [];
+      }
     }
+  }
+
+  private extractSuggestions(text: string): string[] {
+    const out: string[] = [];
+    const lines = text.split('\n');
+    for (const line of lines) {
+      const m = line.match(/^\s*-\s*SUGGESTION:\s*(.+)\s*$/i);
+      if (m && m[1]) {
+        const s = m[1].trim();
+        if (s && !out.includes(s)) out.push(s);
+      }
+    }
+    if (out.length === 0) {
+      const alt: string[] = [];
+      for (const line of lines) {
+        const m = line.match(/^\s*[-*]\s+(.+)\s*$/);
+        if (m && m[1]) {
+          const s = m[1].trim();
+          if (s && !alt.includes(s)) alt.push(s);
+        }
+      }
+      return alt;
+    }
+    return out;
   }
 
   /**

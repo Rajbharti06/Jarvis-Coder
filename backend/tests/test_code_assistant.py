@@ -25,3 +25,21 @@ def test_usage_endpoint_basic():
     data = resp.json()
     assert "mode" in data
     assert "available_models" in data
+
+def test_command_suggestions_endpoint():
+    payload = {"partial": "git comm"}
+    resp = client.post("/api/ai/command-suggestions", json=payload)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "result" in data
+    assert isinstance(data["result"], str)
+    assert len(data["result"]) > 0
+
+def test_docs_lookup_endpoint():
+    payload = {"query": "How to create and activate Python venv", "language": "python"}
+    resp = client.post("/api/ai/docs", json=payload)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "result" in data
+    assert isinstance(data["result"], str)
+    assert "venv" in data["result"].lower()

@@ -49,13 +49,27 @@ class SecurityService:
         self.max_failed_attempts = 5
         self.lockout_duration_minutes = 30
         
-        # Initialize security components
-        asyncio.create_task(self._init_security_db())
-        asyncio.create_task(self._init_encryption())
-        asyncio.create_task(self._load_security_policies())
-        
-        # Start security monitoring
-        asyncio.create_task(self._security_monitoring_loop())
+        # Initialize security components safely depending on event loop state
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(self._init_security_db())
+                loop.create_task(self._init_encryption())
+                loop.create_task(self._load_security_policies())
+                loop.create_task(self._security_monitoring_loop())
+            else:
+                loop.run_until_complete(self._init_security_db())
+                loop.run_until_complete(self._init_encryption())
+                loop.run_until_complete(self._load_security_policies())
+                # Skip starting monitoring loop until an event loop is running
+        except Exception:
+            # Fallback to synchronous initialization if loop retrieval fails
+            try:
+                asyncio.run(self._init_security_db())
+                asyncio.run(self._init_encryption())
+                asyncio.run(self._load_security_policies())
+            except Exception:
+                pass
     
     async def _init_security_db(self):
         """Initialize security database tables"""

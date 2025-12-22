@@ -290,7 +290,7 @@ class CommandProcessor:
         logger.log_chat(f"/test {args}", response, model or "default")
         return response
 
-    async def _handle_refactor_command(self, args: str, model: Optional[str = None) -> str:
+    async def _handle_refactor_command(self, args: str, model: Optional[str] = None) -> str:
         """Handle /refactor command - refactor code for better quality"""
         if not args:
             return "Please provide code or a file path to refactor. Example: /refactor function oldFunction() { /* messy code */ }"

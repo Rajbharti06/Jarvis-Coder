@@ -14,6 +14,7 @@ from pydantic import BaseModel
 import logging
 import shlex
 import platform
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,9 @@ class TerminalManager:
     def __init__(self):
         self.sessions: Dict[str, TerminalSession] = {}
         self.active_processes: Dict[str, subprocess.Popen] = {}
+        base_dir = Path(__file__).resolve().parents[2]
+        self.workspace_dir = (base_dir / "workspace").resolve()
+        self.sessions_file = (self.workspace_dir / "terminal_sessions.json").resolve()
         
         # Dangerous commands that should be blocked or require confirmation
         self.dangerous_commands = {
@@ -61,6 +65,42 @@ class TerminalManager:
             'git', 'npm', 'pip', 'python', 'node', 'code',
             'curl', 'wget', 'ping', 'tracert', 'nslookup'
         }
+        try:
+            self._load_sessions()
+        except Exception as e:
+            logger.warning(f"Failed to load terminal sessions: {e}")
+    
+    def _persist_sessions(self) -> None:
+        """Persist sessions to workspace JSON."""
+        try:
+            self.workspace_dir.mkdir(parents=True, exist_ok=True)
+            serializable = {
+                sid: {
+                    "session_id": s.session_id,
+                    "cwd": s.cwd,
+                    "env": {},  # do not persist env to avoid leaking secrets
+                    "history": s.history[-100],  # cap history
+                    "created_at": s.created_at
+                }
+                for sid, s in self.sessions.items()
+            }
+            self.sessions_file.write_text(json.dumps(serializable, indent=2))
+        except Exception as e:
+            logger.error(f"Failed to persist terminal sessions: {e}")
+    
+    def _load_sessions(self) -> None:
+        """Load sessions from workspace JSON."""
+        if not self.sessions_file.exists():
+            return
+        data = json.loads(self.sessions_file.read_text(encoding="utf-8"))
+        for sid, s in data.items():
+            self.sessions[sid] = TerminalSession(
+                session_id=s.get("session_id", sid),
+                cwd=s.get("cwd", os.getcwd()),
+                env=dict(os.environ),
+                history=s.get("history", []),
+                created_at=s.get("created_at", asyncio.get_event_loop().time())
+            )
     
     def create_session(self, cwd: Optional[str] = None) -> str:
         """Create a new terminal session."""
@@ -81,11 +121,34 @@ class TerminalManager:
         
         self.sessions[session_id] = session
         logger.info(f"Created terminal session {session_id} in {cwd}")
+        self._persist_sessions()
         return session_id
     
     def get_session(self, session_id: str) -> Optional[TerminalSession]:
         """Get terminal session by ID."""
         return self.sessions.get(session_id)
+    
+    def list_sessions(self) -> List[Dict[str, Any]]:
+        """List available sessions."""
+        return [
+            {
+                "session_id": s.session_id,
+                "cwd": s.cwd,
+                "history_count": len(s.history),
+                "created_at": s.created_at
+            }
+            for s in self.sessions.values()
+        ]
+    
+    def rename_session(self, session_id: str, name: str) -> bool:
+        """Rename session by setting a friendly name in cwd (metadata-only)."""
+        session = self.get_session(session_id)
+        if not session:
+            return False
+        # Store friendly name in history metadata for simplicity
+        session.history.append({"meta": "rename", "name": name, "timestamp": asyncio.get_event_loop().time()})
+        self._persist_sessions()
+        return True
     
     def is_command_safe(self, command: str) -> tuple[bool, str]:
         """
@@ -221,6 +284,9 @@ class TerminalManager:
                 except Exception as e:
                     logger.warning(f"Failed to update cwd: {e}")
             
+            # Persist after each command
+            self._persist_sessions()
+            
             return CommandResponse(
                 success=exit_code == 0,
                 stdout=stdout_str,
@@ -295,6 +361,11 @@ async def create_session(cwd: Optional[str] = None):
     session_id = terminal_manager.create_session(cwd)
     return {"session_id": session_id}
 
+@router.get("/sessions")
+async def list_sessions():
+    """List terminal sessions."""
+    return terminal_manager.list_sessions()
+
 @router.get("/sessions/{session_id}")
 async def get_session_info(session_id: str):
     """Get session information."""
@@ -302,6 +373,17 @@ async def get_session_info(session_id: str):
     if not info:
         raise HTTPException(status_code=404, detail="Session not found")
     return info
+
+class RenameRequest(BaseModel):
+    name: str
+
+@router.post("/sessions/{session_id}/rename")
+async def rename_session(session_id: str, request: RenameRequest):
+    """Rename a terminal session."""
+    success = terminal_manager.rename_session(session_id, request.name)
+    if not success:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {"message": "Session renamed", "session_id": session_id, "name": request.name}
 
 @router.post("/sessions/{session_id}/execute", response_model=CommandResponse)
 async def execute_command_in_session(session_id: str, request: CommandRequest):
@@ -367,6 +449,29 @@ async def terminal_websocket(websocket: WebSocket, session_id: str):
         logger.info(f"WebSocket disconnected for session {session_id}")
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
+        await websocket.close()
+
+@router.websocket("/collab/{room_id}")
+async def collab_websocket(websocket: WebSocket, room_id: str):
+    """Simple collaboration WebSocket: broadcast JSON messages to all peers in a room."""
+    await websocket.accept()
+    if not hasattr(collab_websocket, "rooms"):
+        collab_websocket.rooms = {}  # type: ignore
+    room = collab_websocket.rooms.setdefault(room_id, set())  # type: ignore
+    room.add(websocket)
+    try:
+        while True:
+            message = await websocket.receive_text()
+            for peer in list(room):
+                if peer is not websocket:
+                    try:
+                        await peer.send_text(message)
+                    except Exception:
+                        room.discard(peer)
+    except WebSocketDisconnect:
+        room.discard(websocket)
+    except Exception as e:
+        logger.error(f"Collab WS error in room {room_id}: {e}")
         await websocket.close()
 
 @router.get("/health")

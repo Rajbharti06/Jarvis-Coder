@@ -18,6 +18,8 @@ interface JarvisTerminalProps {
   onCommand?: (command: string) => void;
   onAICommand?: (command: string) => void;
   className?: string;
+  promptPrefix?: string;
+  soundEnabled?: boolean;
 }
 
 interface CommandHistory {
@@ -30,7 +32,9 @@ interface CommandHistory {
 export const JarvisTerminal: React.FC<JarvisTerminalProps> = ({
   onCommand,
   onAICommand,
-  className = ''
+  className = '',
+  promptPrefix = '$',
+  soundEnabled = false
 }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const terminal = useRef<Terminal | null>(null);
@@ -44,6 +48,8 @@ export const JarvisTerminal: React.FC<JarvisTerminalProps> = ({
   const [commandHistory, setCommandHistory] = useState<CommandHistory[]>([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [inputBuffer, setInputBuffer] = useState<string>('');
+  const [historyPointer, setHistoryPointer] = useState<number>(-1);
 
   // Terminal theme - Warp-style glassmorphic
   const terminalTheme = {
@@ -114,6 +120,100 @@ export const JarvisTerminal: React.FC<JarvisTerminalProps> = ({
     terminal.current.writeln('');
     writePrompt();
 
+    // Real-time input handling with echo
+    terminal.current.onKey(({ key, domEvent }) => {
+      const t = terminal.current!;
+      // Ctrl+L clear
+      if (domEvent.ctrlKey && domEvent.key.toLowerCase() === 'l') {
+        domEvent.preventDefault();
+        t.clear();
+        setInputBuffer('');
+        writePrompt();
+        return;
+      }
+      // Ctrl+C interrupt
+      if (domEvent.ctrlKey && domEvent.key.toLowerCase() === 'c') {
+        domEvent.preventDefault();
+        t.write('^C\r\n');
+        setInputBuffer('');
+        writePrompt();
+        return;
+      }
+      // Handle Enter: submit command
+      if (domEvent.key === 'Enter') {
+        domEvent.preventDefault();
+        t.write('\r\n');
+        if (inputBuffer.trim()) {
+          executeCommand(inputBuffer.trim());
+          setCommandHistory(prev => [...prev, {
+            command: inputBuffer.trim(),
+            output: '',
+            timestamp: Date.now(),
+            success: true
+          }]);
+        } else {
+          writePrompt();
+        }
+        setHistoryPointer(-1);
+        setInputBuffer('');
+        return;
+      }
+      // Handle Backspace
+      if (domEvent.key === 'Backspace') {
+        domEvent.preventDefault();
+        if (inputBuffer.length > 0) {
+          setInputBuffer(prev => prev.slice(0, -1));
+          t.write('\b \b');
+        }
+        return;
+      }
+      // History navigation
+      if (domEvent.key === 'ArrowUp' || domEvent.key === 'ArrowDown') {
+        domEvent.preventDefault();
+        const cmds = commandHistory.map(h => h.command);
+        if (cmds.length === 0) return;
+        let ptr = historyPointer;
+        if (domEvent.key === 'ArrowUp') {
+          ptr = ptr < 0 ? cmds.length - 1 : Math.max(0, ptr - 1);
+        } else {
+          ptr = ptr < 0 ? 0 : Math.min(cmds.length - 1, ptr + 1);
+        }
+        setHistoryPointer(ptr);
+        // Erase current input from terminal line
+        const currentLen = inputBuffer.length;
+        for (let i = 0; i < currentLen; i++) t.write('\b \b');
+        const newCmd = cmds[ptr] || '';
+        setInputBuffer(newCmd);
+        t.write(newCmd);
+        return;
+      }
+      // Tab completion (basic)
+      if (domEvent.key === 'Tab') {
+        domEvent.preventDefault();
+        const dictionary = [
+          'clear','help','history','ls','dir','pwd','cd','echo',
+          'git status','git commit -m','git checkout -b','npm run dev','npm test'
+        ];
+        const match = dictionary.find(d => d.startsWith(inputBuffer));
+        if (match) {
+          const suffix = match.slice(inputBuffer.length);
+          setInputBuffer(match);
+          terminal.current!.write(suffix);
+        } else {
+          // show quick hint
+          terminal.current!.writeln('\r\n\x1b[90m(no completion)\x1b[0m');
+          writePromptInline();
+        }
+        return;
+      }
+      // Printable characters
+      if (key.length === 1 || key === ' ') {
+        setInputBuffer(prev => prev + key);
+        t.write(key);
+        return;
+      }
+    });
+
     // Handle keyboard events
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.code === 'Space') {
@@ -151,9 +251,41 @@ export const JarvisTerminal: React.FC<JarvisTerminalProps> = ({
 
   const writePrompt = useCallback(() => {
     if (!terminal.current) return;
-    const prompt = `\x1b[1;32m┌─[\x1b[1;36mjarvis\x1b[1;32m@\x1b[1;35mterminal\x1b[1;32m]\x1b[0m \x1b[1;34m${currentPath}\x1b[0m\n\x1b[1;32m└─\x1b[1;36m$\x1b[0m `;
+    const prompt = `\x1b[1;32m┌─[\x1b[1;36mjarvis\x1b[1;32m@\x1b[1;35mterminal\x1b[1;32m]\x1b[0m \x1b[1;34m${currentPath}\x1b[0m\n\x1b[1;32m└─\x1b[1;36m${promptPrefix}\x1b[0m `;
     terminal.current.write(prompt);
   }, [currentPath]);
+
+  const writePromptInline = useCallback(() => {
+    if (!terminal.current) return;
+    const prompt = `\x1b[1;32m└─\x1b[1;36m${promptPrefix}\x1b[0m `;
+    terminal.current.write(prompt);
+  }, []);
+
+  const typewriter = useCallback(async (text: string, delay = 5) => {
+    if (!terminal.current) return;
+    for (let i = 0; i < text.length; i++) {
+      terminal.current.write(text[i]);
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise(res => setTimeout(res, delay));
+    }
+    terminal.current.write('\r\n');
+  }, []);
+
+  const beep = useCallback(() => {
+    if (!soundEnabled) return;
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'square';
+      o.frequency.value = 880;
+      g.gain.value = 0.02;
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.start();
+      setTimeout(() => o.stop(), 60);
+    } catch {}
+  }, [soundEnabled]);
 
   const executeCommand = useCallback(async (command: string) => {
     if (!terminal.current) return;
@@ -172,10 +304,10 @@ export const JarvisTerminal: React.FC<JarvisTerminalProps> = ({
 
       if (command.trim() === 'help') {
         terminal.current.writeln('\x1b[33mJarvis Terminal Commands:\x1b[0m');
-        terminal.current.writeln('  \x1b[36mclear\x1b[0m     - Clear terminal');
-        terminal.current.writeln('  \x1b[36mhelp\x1b[0m      - Show this help');
-        terminal.current.writeln('  \x1b[36mhistory\x1b[0m   - Show command history');
-        terminal.current.writeln('  \x1b[36mai <query>\x1b[0m - Ask AI assistant');
+        await typewriter('  clear       - Clear terminal');
+        await typewriter('  help        - Show this help');
+        await typewriter('  history     - Show command history');
+        await typewriter('  ai <query>  - Ask AI assistant');
         terminal.current.writeln('');
         writePrompt();
         return;
@@ -227,14 +359,15 @@ export const JarvisTerminal: React.FC<JarvisTerminalProps> = ({
       // Simulate command execution
       setTimeout(() => {
         if (command.includes('ls') || command.includes('dir')) {
-          terminal.current?.writeln('\x1b[34mfolder1/\x1b[0m  \x1b[32mfile1.txt\x1b[0m  \x1b[32mfile2.js\x1b[0m  \x1b[35mREADME.md\x1b[0m');
+          typewriter('\x1b[34mfolder1/\x1b[0m  \x1b[32mfile1.txt\x1b[0m  \x1b[32mfile2.js\x1b[0m  \x1b[35mREADME.md\x1b[0m', 2);
         } else if (command.includes('pwd')) {
-          terminal.current?.writeln(`\x1b[36m${currentPath}\x1b[0m`);
+          typewriter(`\x1b[36m${currentPath}\x1b[0m`, 3);
         } else {
-          terminal.current?.writeln(`\x1b[90mCommand executed: ${command}\x1b[0m`);
+          typewriter(`\x1b[90mCommand executed: ${command}\x1b[0m`, 3);
         }
         terminal.current?.writeln('');
         writePrompt();
+        beep();
       }, 500);
 
       setCommandHistory(prev => [...prev, {
@@ -256,7 +389,7 @@ export const JarvisTerminal: React.FC<JarvisTerminalProps> = ({
         success: false
       }]);
     }
-  }, [onCommand, onAICommand, currentPath, commandHistory, writePrompt]);
+  }, [onCommand, onAICommand, currentPath, commandHistory, writePrompt, typewriter, beep]);
 
   const handleCommandSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
