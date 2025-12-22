@@ -171,8 +171,12 @@ class APIClient {
     projectId: string,
     filePath: string
   ): Promise<APIResponse<{ content: string }>> {
+    // Note: filePath must be encoded properly, but slashes should be preserved if possible 
+    // or just let encodeURIComponent handle it and rely on backend decoding if consistent.
+    // However, usually for "path" params, we want clear structure.
+    // Let's stick to simple path concatenation as backend uses {file_path:path}
     return this.request<{ content: string }>(
-      `/files/content?project_id=${projectId}&path=${encodeURIComponent(filePath)}`
+      `/files/content/${projectId}/${filePath}`
     );
   }
 
@@ -181,19 +185,24 @@ class APIClient {
     filePath: string,
     content: string
   ): Promise<APIResponse<{ message: string }>> {
-    return this.request<{ message: string }>(`/files/content`, {
-      method: 'POST',
-      body: JSON.stringify({ project_id: projectId, path: filePath, content }),
-    });
+    return this.request<{ message: string }>(
+      `/files/content/${projectId}/${filePath}`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ content }),
+      }
+    );
   }
 
   async listDirectoryContents(
     projectId: string,
     dirPath: string = ""
   ): Promise<APIResponse<FileNode[]>> {
-    return this.request<FileNode[]>(
-      `/files/list?project_id=${projectId}&path=${encodeURIComponent(dirPath)}`
-    );
+    const url = dirPath 
+      ? `/files/list/${projectId}/${dirPath}`
+      : `/files/list/${projectId}`;
+      
+    return this.request<FileNode[]>(url);
   }
 
   async createFile(

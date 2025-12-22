@@ -91,9 +91,34 @@ export const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
   };
 
   // Handle file selection
-  const handleFileSelect = (file: FileNode) => {
+  const handleFileSelect = async (file: FileNode) => {
     if (file.type === 'file') {
-      openFile(file);
+      // Fetch content if not available
+      if (!file.content && currentProject) {
+        try {
+          const response = await apiClient.getFileContent(currentProject.id, file.path);
+          if (response.success && response.data) {
+            openFile({ ...file, content: response.data.content });
+          } else {
+            addToast({
+              id: Date.now().toString(),
+              type: 'error',
+              message: `Failed to load ${file.name}`,
+              duration: 3000
+            });
+          }
+        } catch (error) {
+          console.error('Failed to load file content:', error);
+          addToast({
+            id: Date.now().toString(),
+            type: 'error',
+            message: `Error loading ${file.name}`,
+            duration: 3000
+          });
+        }
+      } else {
+        openFile(file);
+      }
     } else {
       toggleFolder(file.path);
     }

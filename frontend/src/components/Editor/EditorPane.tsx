@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import Editor from '@monaco-editor/react';
+import Editor, { useMonaco } from '@monaco-editor/react';
 import { 
   XMarkIcon, 
   DocumentIcon, 
@@ -10,7 +10,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAppStore } from '../../stores/appStore';
 import { useTheme } from '../../hooks/useTheme';
-import { getFileLanguage } from '../../utils/api';
+import { getFileLanguage, apiClient } from '../../utils/api';
+import { aiService } from '../../services/aiService';
 
 interface EditorPaneProps {
   className?: string;
@@ -39,8 +40,48 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ className = '' }) => {
   const { theme } = useTheme();
   const editorRef = useRef<any>(null);
   const tabsContainerRef = useRef<HTMLDivElement>(null);
+  const completionProviderRef = useRef<any>(null);
 
   const activeTab = editorTabs.find(tab => tab.id === activeTabId);
+
+  // Save file function using store state to avoid stale closures
+  const saveFile = async () => {
+    const state = useAppStore.getState();
+    const currentTabId = state.activeTabId;
+    const tab = state.editorTabs.find(t => t.id === currentTabId);
+    const project = state.currentProject;
+
+    if (!tab || !project) return;
+
+    try {
+      addToast({
+        id: Date.now().toString(),
+        type: 'info',
+        message: `Saving ${tab.name}...`,
+        duration: 1000
+      });
+
+      const response = await apiClient.saveFileContent(project.id, tab.fileId, tab.content);
+      
+      if (response.success) {
+        addToast({
+          id: Date.now().toString(),
+          type: 'success',
+          message: `Saved ${tab.name}`,
+          duration: 2000
+        });
+      } else {
+        throw new Error(response.error || 'Save failed');
+      }
+    } catch (error) {
+      addToast({
+        id: Date.now().toString(),
+        type: 'error',
+        message: `Failed to save ${tab.name}`,
+        duration: 3000
+      });
+    }
+  };
 
   // Handle editor mount
   const handleEditorDidMount = useCallback((editor: any, monaco: any) => {
@@ -119,13 +160,74 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ className = '' }) => {
     // Set theme
     monaco.editor.setTheme(theme === 'dark' ? 'jarvis-dark' : 'jarvis-light');
     
+    // Register AI Completion Provider
+    // Dispose previous if exists
+    if (completionProviderRef.current) {
+      completionProviderRef.current.dispose();
+    }
+
+    // Helper to register for multiple languages
+    const registerAI = (lang: string) => {
+      return monaco.languages.registerCompletionItemProvider(lang, {
+        provideCompletionItems: async (model: any, position: any) => {
+          const textUntilPosition = model.getValueInRange({
+            startLineNumber: 1,
+            startColumn: 1,
+            endLineNumber: position.lineNumber,
+            endColumn: position.column
+          });
+
+          // Only trigger if line is not empty
+          if (!textUntilPosition.trim()) return { suggestions: [] };
+
+          try {
+            const suggestions = await aiService.getCodeSuggestions(
+              textUntilPosition, 
+              lang, 
+              'completion'
+            );
+            
+            return {
+              suggestions: suggestions.map((s: string) => ({
+                label: s,
+                kind: monaco.languages.CompletionItemKind.Snippet,
+                insertText: s,
+                detail: 'AI Suggestion',
+                range: {
+                  startLineNumber: position.lineNumber,
+                  endLineNumber: position.lineNumber,
+                  startColumn: position.column,
+                  endColumn: position.column
+                }
+              }))
+            };
+          } catch (e) {
+            return { suggestions: [] };
+          }
+        }
+      });
+    };
+
+    // Register for common languages
+    const disposables = [
+      registerAI('typescript'),
+      registerAI('javascript'),
+      registerAI('python'),
+      registerAI('html'),
+      registerAI('css'),
+      registerAI('json')
+    ];
+    
+    // Store composite disposable
+    completionProviderRef.current = {
+      dispose: () => disposables.forEach(d => d.dispose())
+    };
+
     // Add keyboard shortcuts
     editor.addCommand(
       monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
       () => {
-        if (activeTab) {
-          saveFile(activeTab.id);
-        }
+        saveFile();
       }
     );
 
@@ -141,12 +243,13 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ className = '' }) => {
     editor.addCommand(
       monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyW,
       () => {
-        if (activeTab) {
-          closeTab(activeTab.id);
+        const state = useAppStore.getState();
+        if (state.activeTabId) {
+          closeTab(state.activeTabId);
         }
       }
     );
-  }, [activeTab, theme, closeTab]);
+  }, [theme, closeTab]); // Removed activeTab dependency to prevent re-registration loops
 
   // Handle editor content change
   const handleEditorChange = useCallback((value: string | undefined) => {
@@ -155,43 +258,12 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ className = '' }) => {
     }
   }, [activeTab, updateTabContent]);
 
-  // Save file function
-  const saveFile = async (tabId: string) => {
-    const tab = editorTabs.find(t => t.id === tabId);
-    if (!tab || !currentProject) return;
-
-    try {
-      addToast({
-        id: Date.now().toString(),
-        type: 'info',
-        message: `Saving ${tab.name}...`,
-        duration: 1000
-      });
-
-      // Here you would call your API to save the file
-      // await apiClient.saveFile(currentProject.id, tab.path, tab.content);
-      
-      addToast({
-        id: Date.now().toString(),
-        type: 'success',
-        message: `Saved ${tab.name}`,
-        duration: 2000
-      });
-    } catch (error) {
-      addToast({
-        id: Date.now().toString(),
-        type: 'error',
-        message: `Failed to save ${tab.name}`,
-        duration: 3000
-      });
-    }
-  };
-
   // Handle tab close
   const handleCloseTab = (tabId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     closeTab(tabId);
   };
+
 
   // Scroll tabs container
   const scrollTabs = (direction: 'left' | 'right') => {
