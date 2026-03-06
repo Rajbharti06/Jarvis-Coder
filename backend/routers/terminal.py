@@ -18,7 +18,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/terminal", tags=["terminal"])
+router = APIRouter(tags=["terminal"])
 
 class CommandRequest(BaseModel):
     command: str
@@ -33,6 +33,7 @@ class CommandResponse(BaseModel):
     exit_code: int
     execution_time: float
     command_id: str
+    cwd: Optional[str] = None
 
 class TerminalSession(BaseModel):
     session_id: str
@@ -226,37 +227,25 @@ class TerminalManager:
                 full_command = ["bash", "-c", command]
             
             # Execute command
-            process = await asyncio.create_subprocess_exec(
-                *full_command,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                cwd=cwd,
-                env=env
-            )
-            
-            # Store active process
-            self.active_processes[command_id] = process
-            
-            try:
-                stdout, stderr = await asyncio.wait_for(
-                    process.communicate(),
-                    timeout=timeout
-                )
-                
-                stdout_str = stdout.decode('utf-8', errors='replace') if stdout else ""
-                stderr_str = stderr.decode('utf-8', errors='replace') if stderr else ""
-                exit_code = process.returncode
-                
-            except asyncio.TimeoutError:
-                process.kill()
-                await process.wait()
-                stdout_str = ""
-                stderr_str = f"Command timed out after {timeout} seconds"
-                exit_code = -1
-            
-            finally:
-                # Remove from active processes
-                self.active_processes.pop(command_id, None)
+            def _run_blocking():
+                try:
+                    result = subprocess.run(
+                        full_command,
+                        cwd=cwd,
+                        env=env,
+                        capture_output=True,
+                        text=True,
+                        timeout=timeout,
+                        encoding='utf-8',
+                        errors='replace'
+                    )
+                    return result.stdout, result.stderr, result.returncode
+                except subprocess.TimeoutExpired:
+                    return "", "Command timed out", -1
+                except Exception as e:
+                    return "", str(e), -1
+
+            stdout_str, stderr_str, exit_code = await asyncio.to_thread(_run_blocking)
             
             execution_time = asyncio.get_event_loop().time() - start_time
             
@@ -293,20 +282,24 @@ class TerminalManager:
                 stderr=stderr_str,
                 exit_code=exit_code,
                 execution_time=execution_time,
-                command_id=command_id
+                command_id=command_id,
+                cwd=session.cwd
             )
             
         except Exception as e:
             execution_time = asyncio.get_event_loop().time() - start_time
             logger.error(f"Command execution failed: {e}")
+            import traceback
+            traceback.print_exc()
             
             return CommandResponse(
                 success=False,
                 stdout="",
-                stderr=f"Execution error: {str(e)}",
+                stderr=f"Execution error: {repr(e)}",
                 exit_code=-1,
                 execution_time=execution_time,
-                command_id=command_id
+                command_id=command_id,
+                cwd=session.cwd if session else cwd
             )
     
     def kill_command(self, command_id: str) -> bool:

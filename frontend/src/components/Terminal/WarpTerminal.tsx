@@ -60,6 +60,17 @@ export const WarpTerminal: React.FC<WarpTerminalProps> = ({
   const [providers, setProviders] = useState<ProviderConfig[]>([]);
   const [showModelSwitcher, setShowModelSwitcher] = useState(false);
   const [showAPIKeyManager, setShowAPIKeyManager] = useState(false);
+  const [cwd, setCwd] = useState<string>('~');
+
+  useEffect(() => {
+    const handleCwdChange = (newCwd: string) => {
+      setCwd(newCwd);
+    };
+    terminalService.on('cwdChanged', handleCwdChange);
+    return () => {
+      terminalService.off('cwdChanged', handleCwdChange);
+    };
+  }, []);
 
   // Command suggestions database
   const commonCommands = [
@@ -273,10 +284,11 @@ export const WarpTerminal: React.FC<WarpTerminalProps> = ({
     const aiIndicator = aiMode ? '\x1b[1;35m[AI]\x1b[0m ' : '';
     const timestamp = new Date().toLocaleTimeString();
     const statusColor = isOnline ? '\x1b[32m' : '\x1b[31m';
+    const displayCwd = cwd === '~' ? '~' : cwd.split(/[\\/]/).pop() || cwd;
     
     // Warp-style prompt with timestamp and status
-    terminal.write(`\r\n\x1b[90m${timestamp}\x1b[0m ${modelIndicator} ${aiIndicator}\x1b[1;36mjarvis\x1b[0m:\x1b[1;34m~\x1b[0m${statusColor}$\x1b[0m `);
-  }, [isOffline, aiMode, isOnline]);
+    terminal.write(`\r\n\x1b[90m${timestamp}\x1b[0m ${modelIndicator} ${aiIndicator}\x1b[1;36mjarvis\x1b[0m:\x1b[1;34m${displayCwd}\x1b[0m${statusColor}$\x1b[0m `);
+  }, [isOffline, aiMode, isOnline, cwd]);
 
   // Handle AI command with enhanced context
   const handleAICommand = useCallback(async (command: string, terminal: Terminal) => {

@@ -49,6 +49,12 @@ Jarvis Coder is built for people who *ship*, not just click.
 * 🗣️ **Natural language commands** for code, fixes & explanations
 * 🌊 **Streaming responses** with real-time typing
 
+### 👥 Real-Time Collaboration
+
+* 🔄 **Live presence updates** — see collaborators online
+* 📝 **File change events** — broadcast edits in shared projects
+* 🔌 **WebSocket event bus** — JSON-based events for extensibility
+
 ---
 
 ### 🧑‍💻 Development Environment
@@ -82,6 +88,13 @@ Jarvis Coder is built for people who *ship*, not just click.
 * 🧯 **Graceful error handling**
 * ⚙️ **Environment-based configuration**
 * 🧩 Modular service architecture
+* 🔎 **Code vulnerability scanning** — detect insecure patterns across Python/JS/Node
+
+### 🔌 Plugin Architecture
+
+* 📦 **Plugin registry** — register, list, enable/disable plugins
+* 🧩 **JSON manifests** — simple plugin metadata management
+* 🔁 **Extensible services** — designed for third-party integrations
 
 ---
 
@@ -140,6 +153,18 @@ WORKSPACE_DIR=./workspace
 LOG_LEVEL=INFO
 ```
 
+## 🧪 Testing & Coverage
+
+Backend tests use pytest with coverage:
+
+```bash
+cd backend
+pip install -r requirements.txt
+pytest --cov=backend --cov-report=term-missing
+```
+
+Aim for coverage ≥ 80%. Add tests under `backend/tests/`.
+
 ---
 
 ## 🚀 Usage
@@ -151,11 +176,25 @@ cd backend
 python main.py
 ```
 
+Or via Docker:
+
+```bash
+docker compose up --build
+```
+
 ### Start Frontend
 
 ```bash
 cd frontend
 npm start
+```
+
+For production:
+
+```bash
+cd frontend
+npm run build
+npx serve -s dist
 ```
 
 ### Use CLI
@@ -220,6 +259,11 @@ jarvis-coder/
 * `POST /api/chat/stream`
 * `GET /api/files`
 * `POST /api/execute`
+* `GET /security/scan/{project_id}`
+* `GET /plugins/`
+* `POST /plugins/` (register)
+* `POST /plugins/{plugin_id}/enable`
+* `POST /plugins/{plugin_id}/disable`
 
 ---
 

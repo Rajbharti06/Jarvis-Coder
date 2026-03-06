@@ -41,6 +41,8 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ className = '' }) => {
   const editorRef = useRef<any>(null);
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const completionProviderRef = useRef<any>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const changeBufferRef = useRef<{ ts: number } | null>(null);
 
   const activeTab = editorTabs.find(tab => tab.id === activeTabId);
 
@@ -255,8 +257,52 @@ export const EditorPane: React.FC<EditorPaneProps> = ({ className = '' }) => {
   const handleEditorChange = useCallback((value: string | undefined) => {
     if (activeTab && value !== undefined) {
       updateTabContent(activeTab.id, value);
+      // Broadcast collaborative file change events (debounced)
+      const now = Date.now();
+      if (!changeBufferRef.current || now - changeBufferRef.current.ts > 300) {
+        changeBufferRef.current = { ts: now };
+        const ws = wsRef.current;
+        if (ws && ws.readyState === WebSocket.OPEN && currentProject) {
+          ws.send(JSON.stringify({
+            type: 'file_change',
+            payload: {
+              project_id: currentProject.id,
+              file_id: activeTab.fileId,
+              tab_id: activeTab.id,
+              timestamp: new Date().toISOString()
+            }
+          }));
+        }
+      }
     }
   }, [activeTab, updateTabContent]);
+
+  // Setup WebSocket for collaboration
+  useEffect(() => {
+    const ws = apiClient.createWebSocket(
+      (data) => {
+        if (data?.type === 'presence') {
+          // Optionally show presence updates via toast
+          addToast({
+            id: Date.now().toString(),
+            type: 'info',
+            message: `Collaborators online: ${data.payload?.connections ?? 1}`,
+            duration: 1000
+          });
+        }
+      },
+      (err) => {
+        console.error('WS error', err);
+      }
+    );
+    wsRef.current = ws;
+    return () => {
+      try {
+        ws.close();
+      } catch {}
+      wsRef.current = null;
+    };
+  }, [addToast]);
 
   // Handle tab close
   const handleCloseTab = (tabId: string, e: React.MouseEvent) => {

@@ -19,3 +19,11 @@ requests
 beautifulsoup4
 cssutils
 esprima
+pytest
+pytest-cov
+pydantic-settings
+python-multipart
+aiosqlite
+aiohttp
+aiofiles
+numpy

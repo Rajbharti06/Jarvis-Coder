@@ -3,7 +3,7 @@
  * Handles communication with FastAPI backend
  */
 
-import type { APIResponse, ChatMessage, Project, FileNode } from '../types';
+import type { APIResponse, ChatMessage, Project, FileNode, FilePatch } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -245,6 +245,68 @@ class APIClient {
     });
   }
 
+  // AI patch proposal (proposal-only; client must confirm & apply)
+  async proposePatches(
+    instruction: string,
+    options: {
+      projectId?: string | null;
+      targetFiles?: string[];
+      model?: string;
+    } = {}
+  ): Promise<APIResponse<{ patches: FilePatch[]; raw_response: string }>> {
+    const payload: Record<string, any> = {
+      instruction,
+    };
+    if (options.projectId) {
+      payload.project_id = options.projectId;
+    }
+    if (options.targetFiles && options.targetFiles.length > 0) {
+      payload.target_files = options.targetFiles;
+    }
+    if (options.model) {
+      payload.model = options.model;
+    }
+
+    return this.request<{ patches: FilePatch[]; raw_response: string }>(
+      '/api/patches/propose',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
+  }
+
+  // AI patch proposal (proposal-only; client must confirm & apply)
+  async proposePatches(
+    instruction: string,
+    options: {
+      projectId?: string | null;
+      targetFiles?: string[];
+      model?: string;
+    } = {}
+  ): Promise<APIResponse<{ patches: any[]; raw_response: string }>> {
+    const payload: Record<string, any> = {
+      instruction,
+    };
+    if (options.projectId) {
+      payload.project_id = options.projectId;
+    }
+    if (options.targetFiles && options.targetFiles.length > 0) {
+      payload.target_files = options.targetFiles;
+    }
+    if (options.model) {
+      payload.model = options.model;
+    }
+
+    return this.request<{ patches: any[]; raw_response: string }>(
+      '/api/patches/propose',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
+  }
+
   // Model endpoints
   async getAvailableModels(): Promise<APIResponse<any[]>> {
     return this.request<any[]>('/api/models');
@@ -447,6 +509,22 @@ class APIClient {
   async triggerBlackboxUpgrade(): Promise<APIResponse<any>> {
     return this.request<any>('/api/blackbox/upgrade', {
       method: 'POST',
+    });
+  }
+
+  // Git endpoints
+  async gitStatus(projectId: string): Promise<APIResponse<{ output: string }>> {
+    return this.request<{ output: string }>(`/git/status/${projectId}`);
+  }
+
+  async gitInit(projectId: string): Promise<APIResponse<{ output: string }>> {
+    return this.request<{ output: string }>(`/git/init/${projectId}`, { method: 'POST' });
+  }
+
+  async gitCommit(projectId: string, message: string): Promise<APIResponse<{ output: string }>> {
+    return this.request<{ output: string }>(`/git/commit/${projectId}`, {
+      method: 'POST',
+      body: JSON.stringify({ message })
     });
   }
 

@@ -13,7 +13,8 @@ import {
   PlusIcon,
   EyeIcon,
   EyeSlashIcon,
-  ChatBubbleLeftRightIcon
+  ChatBubbleLeftRightIcon,
+  CommandLineIcon
 } from '@heroicons/react/24/outline';
 import { useAppStore } from '../../stores/appStore';
 import { useTheme } from '../../hooks/useTheme';
@@ -57,7 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
   } = useAppStore();
 
   const { theme, toggleTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState<'files' | 'models' | 'keys' | 'settings' | 'ai'>('files');
+  const [activeTab, setActiveTab] = useState<'files' | 'models' | 'keys' | 'settings' | 'ai' | 'git'>('files');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [showApiKeyForm, setShowApiKeyForm] = useState(false);
   const [newApiKey, setNewApiKey] = useState({ name: '', key: '', provider: 'openai' });
@@ -78,6 +79,100 @@ export const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
     targetPath?: string;
     targetName?: string;
   }>({ isOpen: false, type: 'create-file' });
+
+  const [gitStatus, setGitStatus] = useState<string>('');
+  const [commitMessage, setCommitMessage] = useState('');
+
+  const refreshGitStatus = async () => {
+    if (!currentProject) return;
+    try {
+      const res = await apiClient.gitStatus(currentProject.id);
+      if (res.success && res.data) {
+        setGitStatus(res.data.output);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleGitInit = async () => {
+    if (!currentProject) return;
+    try {
+      const res = await apiClient.gitInit(currentProject.id);
+      if (res.success) {
+        addToast({ id: Date.now().toString(), type: 'success', message: 'Git repository initialized', duration: 2000 });
+        refreshGitStatus();
+      }
+    } catch (e) {
+      addToast({ id: Date.now().toString(), type: 'error', message: 'Failed to init Git', duration: 3000 });
+    }
+  };
+
+  const handleGitCommit = async () => {
+    if (!currentProject || !commitMessage) return;
+    try {
+      const res = await apiClient.gitCommit(currentProject.id, commitMessage);
+      if (res.success) {
+        addToast({ id: Date.now().toString(), type: 'success', message: 'Committed successfully', duration: 2000 });
+        setCommitMessage('');
+        refreshGitStatus();
+      }
+    } catch (e) {
+      addToast({ id: Date.now().toString(), type: 'error', message: 'Commit failed', duration: 3000 });
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'git' && currentProject) {
+      refreshGitStatus();
+    }
+  }, [activeTab, currentProject]);
+
+  const renderGitTab = () => (
+    <div className="flex-1 flex flex-col">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-sm font-medium text-white/80">Source Control</h3>
+        <button onClick={refreshGitStatus} className="p-1 hover:bg-white/10 rounded">
+          <CommandLineIcon className="w-4 h-4 text-white/60" />
+        </button>
+      </div>
+
+      {!currentProject ? (
+        <div className="text-center py-8 text-white/60 text-sm">Select a project</div>
+      ) : (
+        <>
+          <div className="flex-1 overflow-auto bg-black/20 rounded p-2 mb-4 font-mono text-xs text-white/70 whitespace-pre-wrap">
+            {gitStatus || 'No status available'}
+          </div>
+
+          <div className="space-y-2">
+             {gitStatus.includes('Not a git repository') && (
+                <button
+                  onClick={handleGitInit}
+                  className="w-full glass-button text-sm py-2 bg-blue-500/20 hover:bg-blue-500/30"
+                >
+                  Initialize Repository
+                </button>
+             )}
+            
+            <textarea
+              value={commitMessage}
+              onChange={(e) => setCommitMessage(e.target.value)}
+              placeholder="Commit message..."
+              className="w-full h-20 glass-input text-sm p-2 resize-none"
+            />
+            <button
+              onClick={handleGitCommit}
+              disabled={!commitMessage}
+              className="w-full glass-button text-sm py-2 disabled:opacity-50"
+            >
+              Commit
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
 
   // Toggle folder expansion
   const toggleFolder = (path: string) => {
@@ -705,6 +800,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
       <div className="flex border-b border-white/10">
         {[
           { id: 'files', icon: FolderIcon, label: 'Files' },
+          { id: 'git', icon: CommandLineIcon, label: 'Git' },
           { id: 'ai', icon: ChatBubbleLeftRightIcon, label: 'AI' },
           { id: 'models', icon: CpuChipIcon, label: 'Models' },
           { id: 'keys', icon: KeyIcon, label: 'Keys' },
@@ -739,6 +835,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ className = '' }) => {
             className="h-full"
           >
             {activeTab === 'files' && renderFilesTab()}
+            {activeTab === 'git' && renderGitTab()}
             {activeTab === 'ai' && renderAITab()}
             {activeTab === 'models' && renderModelsTab()}
             {activeTab === 'keys' && renderKeysTab()}

@@ -196,3 +196,23 @@ export interface DropTarget {
   accepts: string[];
   onDrop: (item: DragItem) => void;
 }
+
+// AI patch proposal types (for secure, confirmation-based code edits)
+export type PatchOperationType = 'replace' | 'insert' | 'delete';
+
+export interface PatchLineRange {
+  start_line: number;
+  end_line: number;
+}
+
+export interface PatchOperation {
+  type: PatchOperationType;
+  range?: PatchLineRange | null;
+  new_text?: string | null;
+}
+
+export interface FilePatch {
+  file_path: string;
+  description?: string;
+  operations: PatchOperation[];
+}

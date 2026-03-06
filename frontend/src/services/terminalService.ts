@@ -12,6 +12,7 @@ export interface CommandResult {
   error?: string;
   exitCode?: number;
   executionTime?: number;
+  cwd?: string;
 }
 
 export interface TerminalOptions {
@@ -25,9 +26,25 @@ class TerminalService extends EventEmitter {
   private commandHistory: string[] = [];
   private maxHistorySize = 1000;
   private activeCommands = new Map<string, AbortController>();
+  private sessionId: string | null = null;
+  private cwd: string | null = null;
 
   constructor() {
     super();
+  }
+
+  private async ensureSession(): Promise<void> {
+    if (this.sessionId) return;
+    
+    try {
+      const response = await apiClient.post<{ session_id: string }>('/terminal/sessions');
+      if (response.success && response.data?.session_id) {
+        this.sessionId = response.data.session_id;
+      }
+    } catch (error) {
+      console.error('Failed to create terminal session:', error);
+      throw error;
+    }
   }
 
   /**
@@ -41,6 +58,9 @@ class TerminalService extends EventEmitter {
     const commandId = this.generateCommandId();
     
     try {
+      // Ensure session exists
+      await this.ensureSession();
+
       // Add to history
       this.addToHistory(command);
 
@@ -51,8 +71,8 @@ class TerminalService extends EventEmitter {
       // Emit command started event
       this.emit('commandStarted', { commandId, command, options });
 
-      // Execute via backend API
-      const response = await apiClient.post('/terminal/execute', {
+      // Execute via backend API using session
+      const response = await apiClient.post(`/terminal/sessions/${this.sessionId}/execute`, {
         command,
         options: {
           ...options,
@@ -64,6 +84,12 @@ class TerminalService extends EventEmitter {
 
       const executionTime = Date.now() - startTime;
       const result = response.data;
+
+      // Update CWD if provided
+      if (result.cwd) {
+        this.cwd = result.cwd;
+        this.emit('cwdChanged', this.cwd);
+      }
 
       // Emit command completed event
       this.emit('commandCompleted', { 
@@ -81,7 +107,8 @@ class TerminalService extends EventEmitter {
         output: result.output,
         error: result.error,
         exitCode: result.exitCode,
-        executionTime
+        executionTime,
+        cwd: result.cwd
       };
 
     } catch (error: any) {

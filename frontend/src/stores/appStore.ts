@@ -10,7 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 // AI model types
 export type AIMode = 'local' | 'cloud';
-import { 
+import {
   type AppState,
   type Project,
   type ChatMessage,
@@ -20,7 +20,9 @@ import {
   type Settings,
   type Theme,
   type FileNode,
-  type Toast
+  type Toast,
+  type FilePatch,
+  type PatchOperation,
 } from '../types';
 
 interface AppStore extends AppState {
@@ -36,6 +38,10 @@ interface AppStore extends AppState {
   // Additional state
   isSidebarOpen: boolean;
   currentFileTree: FileNode[];
+  // AI patch proposal state (secure, confirmation-based edits)
+  pendingPatches: FilePatch[] | null;
+  patchRawResponse?: string;
+  patchStatus: 'idle' | 'loading' | 'ready' | 'error';
   // Missing functions
   toggleSidebar: () => void;
   openFile: (file: FileNode) => void;
@@ -84,7 +90,72 @@ interface AppStore extends AppState {
   deleteFile: (fileId: string) => void;
   renameFile: (fileId: string, newName: string) => void;
   refreshFileTree: () => Promise<void>;
+  // Patch-related actions
+  requestPatches: (instruction: string, targetFiles?: string[]) => Promise<void>;
+  clearPatches: () => void;
+  applyPatches: () => Promise<void>;
 }
+
+// Apply a list of line-based patch operations to file content, defensively.
+const applyFileOperations = (content: string, operations: PatchOperation[]): string => {
+  if (!operations.length) return content;
+
+  const lines = content.split('\n');
+
+  // Work on a copy and apply from bottom to top so line numbers stay valid.
+  const ops = [...operations].sort((a, b) => {
+    const aStart = a.range?.start_line ?? Number.MAX_SAFE_INTEGER;
+    const bStart = b.range?.start_line ?? Number.MAX_SAFE_INTEGER;
+    return bStart - aStart;
+  });
+
+  let currentLines = [...lines];
+
+  for (const op of ops) {
+    const range = op.range;
+    if ((op.type === 'replace' || op.type === 'delete') && !range) {
+      // Skip malformed operation
+      continue;
+    }
+
+    if (op.type === 'replace' && range) {
+      const startIdx = range.start_line - 1;
+      const endIdx = range.end_line - 1;
+      if (startIdx < 0 || endIdx >= currentLines.length || startIdx > endIdx) {
+        // Out-of-bounds; skip this operation
+        continue;
+      }
+      const newLines = (op.new_text ?? '').split('\n');
+      currentLines = [
+        ...currentLines.slice(0, startIdx),
+        ...newLines,
+        ...currentLines.slice(endIdx + 1),
+      ];
+    } else if (op.type === 'delete' && range) {
+      const startIdx = range.start_line - 1;
+      const endIdx = range.end_line - 1;
+      if (startIdx < 0 || endIdx >= currentLines.length || startIdx > endIdx) {
+        continue;
+      }
+      currentLines = [
+        ...currentLines.slice(0, startIdx),
+        ...currentLines.slice(endIdx + 1),
+      ];
+    } else if (op.type === 'insert') {
+      // Insert before start_line if provided, otherwise append at end.
+      const insertAt = (range?.start_line ?? currentLines.length + 1) - 1;
+      const clampedIndex = Math.max(0, Math.min(insertAt, currentLines.length));
+      const newLines = (op.new_text ?? '').split('\n');
+      currentLines = [
+        ...currentLines.slice(0, clampedIndex),
+        ...newLines,
+        ...currentLines.slice(clampedIndex),
+      ];
+    }
+  }
+
+  return currentLines.join('\n');
+};
 
 const defaultSettings: Settings = {
   theme: 'dark',
@@ -181,6 +252,9 @@ export const useAppStore = create<AppStore>()(
         aiAssistantModalOpen: false,
         toasts: [],
         currentFileTree: [],
+        pendingPatches: null,
+        patchRawResponse: undefined,
+        patchStatus: 'idle',
 
         // Project actions
         setCurrentProject: (project) => set({ currentProject: project }),
@@ -535,6 +609,136 @@ export const useAppStore = create<AppStore>()(
             console.error('Failed to refresh file tree:', error);
             set({ error: 'Failed to refresh file tree' });
           }
+        },
+
+        // Patch-related actions
+        requestPatches: async (instruction, targetFiles) => {
+          const state = get();
+          const project = state.currentProject;
+          if (!project) {
+            state.addToast?.({
+              id: `${Date.now()}-no-project`,
+              type: 'error',
+              title: 'No project open',
+              message: 'Open or create a project before requesting AI patches.',
+              duration: 3000,
+            });
+            return;
+          }
+          if (!instruction.trim()) return;
+
+          set({ patchStatus: 'loading', pendingPatches: null, patchRawResponse: undefined });
+          try {
+            const res = await apiClient.proposePatches(instruction, {
+              projectId: project.id,
+              targetFiles,
+              model: state.selectedModel?.id,
+            });
+            if (!res.success || !res.data) {
+              throw new Error(res.error || 'Patch proposal failed');
+            }
+            set({
+              pendingPatches: res.data.patches,
+              patchRawResponse: res.data.raw_response,
+              patchStatus: 'ready',
+            });
+            state.addToast?.({
+              id: `${Date.now()}-patch-ready`,
+              type: 'info',
+              title: 'AI patch proposal ready',
+              message: `Review and apply ${res.data.patches.length} patch group(s).`,
+              duration: 4000,
+            });
+          } catch (error) {
+            const msg = error instanceof Error ? error.message : 'Unknown error';
+            set({ patchStatus: 'error' });
+            state.addToast?.({
+              id: `${Date.now()}-patch-error`,
+              type: 'error',
+              title: 'Failed to propose patches',
+              message: msg,
+              duration: 4000,
+            });
+          }
+        },
+
+        clearPatches: () => {
+          set({
+            pendingPatches: null,
+            patchRawResponse: undefined,
+            patchStatus: 'idle',
+          });
+        },
+
+        applyPatches: async () => {
+          const state = get();
+          const project = state.currentProject;
+          const patches = state.pendingPatches;
+          if (!project || !patches || patches.length === 0) {
+            return;
+          }
+
+          set({ isLoading: true });
+          const successes: string[] = [];
+          const failures: string[] = [];
+
+          try {
+            for (const patch of patches) {
+              try {
+                const fileRes = await apiClient.getFileContent(project.id, patch.file_path);
+                if (!fileRes.success || !fileRes.data) {
+                  throw new Error(fileRes.error || 'Failed to read file');
+                }
+                const original = fileRes.data.content;
+                const updated = applyFileOperations(original, patch.operations);
+                if (updated === original) {
+                  // No effective change, skip write but count as ok
+                  successes.push(patch.file_path);
+                  continue;
+                }
+                const saveRes = await apiClient.saveFileContent(
+                  project.id,
+                  patch.file_path,
+                  updated
+                );
+                if (!saveRes.success) {
+                  throw new Error(saveRes.error || 'Failed to save file');
+                }
+                successes.push(patch.file_path);
+              } catch (e) {
+                const msg = e instanceof Error ? e.message : String(e);
+                failures.push(`${patch.file_path}: ${msg}`);
+              }
+            }
+          } finally {
+            set({ isLoading: false });
+          }
+
+          if (successes.length > 0) {
+            state.addToast?.({
+              id: `${Date.now()}-patch-apply-ok`,
+              type: 'success',
+              title: 'Patches applied',
+              message: `Applied changes to ${successes.length} file(s).`,
+              duration: 4000,
+            });
+          }
+          if (failures.length > 0) {
+            state.addToast?.({
+              id: `${Date.now()}-patch-apply-fail`,
+              type: 'warning',
+              title: 'Some patches failed',
+              message: failures.slice(0, 3).join(' | '),
+              duration: 6000,
+            });
+          }
+
+          // Clear patch state after attempt
+          set({
+            pendingPatches: null,
+            patchRawResponse: undefined,
+            patchStatus: 'idle',
+          });
         },
       }),
       {

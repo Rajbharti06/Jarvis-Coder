@@ -3,7 +3,22 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from starlette.middleware.cors import CORSMiddleware
 
 # Import your API routers here
-from backend.api import auth, chat, execute, files, baseline, projects, trae_cursor_blackbox, models, keys, code_assistant
+from backend.api import (
+    auth,
+    chat,
+    execute,
+    files,
+    baseline,
+    projects,
+    trae_cursor_blackbox,
+    models,
+    keys,
+    code_assistant,
+    git,
+    security,
+    plugins,
+)
+from backend.api.patches import router as patches_router
 from backend.routers import terminal, context, offline
 from backend.db.base import Base
 from backend.db.session import engine
@@ -41,6 +56,11 @@ def create_application() -> FastAPI:
     application.include_router(offline.router, prefix="/offline", tags=["offline"])
     application.include_router(models.router, prefix="/api/models", tags=["models"])
     application.include_router(keys.router, prefix="/api/keys", tags=["keys"])
+    application.include_router(git.router, prefix="/git", tags=["git"])
+    application.include_router(security.router, prefix="/security", tags=["security"])
+    application.include_router(plugins.router, prefix="/plugins", tags=["plugins"])
+    # AI patch proposal endpoints (proposal-only, never apply changes directly)
+    application.include_router(patches_router, prefix="/api", tags=["patches"])
     # Code Assistant endpoints (prefixed under /api/ai for NGINX compatibility)
     application.include_router(code_assistant.router, prefix="/api/ai", tags=["ai"])
 
@@ -54,12 +74,27 @@ def create_application() -> FastAPI:
     async def root_websocket(ws: WebSocket):
         await ws.accept()
         connections.add(ws)
+        # Simple echo websocket for tests and basic usage
         try:
             while True:
-                data = await ws.receive_text()
-                await ws.send_text(f"Message from client: {data}")
+                msg = await ws.receive_text()
+                await ws.send_text(f"Message from client: {msg}")
         except WebSocketDisconnect:
             connections.discard(ws)
+
+    async def _broadcast(conns, data, exclude: WebSocket | None):
+        import json
+        text = json.dumps(data)
+        for conn in list(conns):
+            if exclude is not None and conn is exclude:
+                continue
+            try:
+                await conn.send_text(text)
+            except Exception:
+                try:
+                    conns.discard(conn)
+                except Exception:
+                    pass
 
     return application
 

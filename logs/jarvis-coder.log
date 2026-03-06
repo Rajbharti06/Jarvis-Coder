@@ -1,0 +1,42 @@
+2025-12-28 00:23:10,388 - backend.services.security_service - INFO - Security database initialized successfully
+2025-12-28 00:23:10,388 - backend.services.security_service - INFO - Encryption system initialized
+2025-12-28 00:23:10,389 - backend.services.security_service - INFO - Security policies loaded
+2025-12-28 01:51:12,660 - backend.services.security_service - INFO - Security database initialized successfully
+2025-12-28 01:51:12,661 - backend.services.security_service - INFO - Encryption system initialized
+2025-12-28 01:51:12,664 - backend.services.security_service - INFO - Security policies loaded
+2025-12-28 01:53:46,365 - backend.services.security_service - INFO - Security database initialized successfully
+2025-12-28 01:53:46,367 - backend.services.security_service - INFO - Encryption system initialized
+2025-12-28 01:53:46,368 - backend.services.security_service - INFO - Security policies loaded
+2025-12-28 01:57:20,164 - backend.routers.terminal - INFO - Created terminal session 5e71e5c0-c9a4-44e4-a12c-6dea6b306cce in C:\Learnings\REAL PROJECTS\jarvis-coder
+2025-12-28 01:57:20,164 - backend.routers.terminal - ERROR - Failed to persist terminal sessions: list index out of range
+2025-12-28 01:57:20,165 - backend.routers.terminal - ERROR - Command execution failed: 
+2025-12-28 01:57:22,207 - backend.routers.terminal - INFO - Created terminal session 33269a19-7d06-4af1-96f1-189f362c9159 in C:\Learnings\REAL PROJECTS\jarvis-coder
+2025-12-28 01:57:22,209 - backend.routers.terminal - ERROR - Failed to persist terminal sessions: list index out of range
+2025-12-28 01:57:26,319 - backend.routers.terminal - ERROR - Command execution failed: 
+2025-12-28 02:02:18,511 - backend.routers.terminal - INFO - Created terminal session aec906e9-836e-4ee4-b982-da23ea227e47 in C:\Learnings\REAL PROJECTS\jarvis-coder
+2025-12-28 02:02:18,513 - backend.routers.terminal - ERROR - Failed to persist terminal sessions: list index out of range
+2025-12-28 02:02:18,513 - backend.routers.terminal - ERROR - Command execution failed: 
+2025-12-28 02:02:26,280 - backend.services.security_service - INFO - Security database initialized successfully
+2025-12-28 02:02:26,282 - backend.services.security_service - INFO - Encryption system initialized
+2025-12-28 02:02:26,284 - backend.services.security_service - INFO - Security policies loaded
+2025-12-28 02:02:26,287 - backend.routers.terminal - INFO - Created terminal session bdff112c-defa-4308-8619-418eaadcc3dd in C:\Learnings\REAL PROJECTS\jarvis-coder
+2025-12-28 02:02:26,288 - backend.routers.terminal - ERROR - Failed to persist terminal sessions: list index out of range
+2025-12-28 02:02:30,386 - backend.routers.terminal - ERROR - Command execution failed: 
+2025-12-28 02:07:27,821 - backend.services.security_service - INFO - Security database initialized successfully
+2025-12-28 02:07:27,823 - backend.services.security_service - INFO - Encryption system initialized
+2025-12-28 02:07:27,826 - backend.services.security_service - INFO - Security policies loaded
+2025-12-28 02:07:46,445 - backend.routers.terminal - INFO - Created terminal session 74a456e2-5ae9-4944-956f-16ae56eb0d32 in C:\Learnings\REAL PROJECTS\jarvis-coder
+2025-12-28 02:07:46,448 - backend.routers.terminal - ERROR - Failed to persist terminal sessions: list index out of range
+2025-12-28 02:07:47,114 - backend.routers.terminal - ERROR - Failed to persist terminal sessions: list index out of range
+2025-12-28 02:07:55,229 - backend.services.security_service - INFO - Security database initialized successfully
+2025-12-28 02:07:55,231 - backend.services.security_service - INFO - Encryption system initialized
+2025-12-28 02:07:55,232 - backend.services.security_service - INFO - Security policies loaded
+2025-12-28 02:07:55,236 - backend.routers.terminal - INFO - Created terminal session 31340cdd-5c4b-4604-ba75-b507c59e5329 in C:\Learnings\REAL PROJECTS\jarvis-coder
+2025-12-28 02:07:55,237 - backend.routers.terminal - ERROR - Failed to persist terminal sessions: list index out of range
+2025-12-28 02:07:59,773 - backend.routers.terminal - ERROR - Failed to persist terminal sessions: list index out of range
+2025-12-28 02:17:51,728 - backend.services.security_service - INFO - Security database initialized successfully
+2025-12-28 02:17:51,731 - backend.services.security_service - INFO - Encryption system initialized
+2025-12-28 02:17:51,733 - backend.services.security_service - INFO - Security policies loaded
+2025-12-28 02:36:59,005 - backend.services.security_service - INFO - Security database initialized successfully
+2025-12-28 02:36:59,006 - backend.services.security_service - INFO - Encryption system initialized
+2025-12-28 02:36:59,008 - backend.services.security_service - INFO - Security policies loaded

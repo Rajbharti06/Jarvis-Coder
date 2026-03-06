@@ -1,0 +1,15 @@
+[run]
+branch = True
+source = backend
+
+[report]
+show_missing = True
+omit =
+    backend/services/ai_service.py
+    backend/services/trae_blackbox_service.py
+    backend/services/multi_model_service.py
+    backend/services/offline_ai_service.py
+    backend/services/learning_service.py
+    backend/services/context_service.py
+    backend/services/baseline_checker.py
+    backend/routers/*
