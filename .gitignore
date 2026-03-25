@@ -62,3 +62,18 @@ pids/
 
 # Config files with sensitive data
 backend/config.json
+.env
+backend/.env
+*.db
+chroma_db/
+.agents/
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/eslint_report.json
+frontend/lint_output.txt
+frontend/ts_errors.txt
+
+# Local Workspace
+workspace/

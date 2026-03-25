@@ -14,3 +14,9 @@ google-generativeai
 groq
 together
 pyjwt[crypto]
+tiktoken
+psutil
+chromadb
+sentence-transformers
+pydantic-settings
+pydantic>=2.0.0

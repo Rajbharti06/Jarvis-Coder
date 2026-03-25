@@ -1,26 +1,48 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 import subprocess
+import os
+import shlex
+import logging
+from fastapi import APIRouter, HTTPException, Body
+from pydantic import BaseModel
+from typing import Optional
+
+from backend.services.execution_service import execute_command
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
-class CodeExecutionRequest(BaseModel):
-    code: str
-    language: str
+class CommandRequest(BaseModel):
+    command: str
+    cwd: Optional[str] = None
 
-@router.post("/execute")
-async def execute_code(request: CodeExecutionRequest):
+from backend.services.agent_service import AgentService
+
+agent_service = AgentService()
+
+class AnalyzeErrorRequest(BaseModel):
+    error_message: str
+    context: Optional[str] = None
+
+@router.post("/run")
+async def run_command_api(request: CommandRequest):
+    """Executes a shell command in the workspace."""
     try:
-        if request.language == 'python':
-            result = subprocess.run(["python", "-c", request.code], capture_output=True, text=True, timeout=10)
-            if result.returncode == 0:
-                return {"success": True, "output": result.stdout}
-            else:
-                return {"success": False, "error": result.stderr}
-        else:
-            # For other languages, we can add support here
-            return {"success": False, "error": f"Language '{request.language}' is not supported."}
-    except subprocess.TimeoutExpired:
-        return {"success": False, "error": "Code execution timed out."}
+        res = await execute_command(request.command, request.cwd)
+        return res
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        logger.error(f"Error running command: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/analyze-error")
+async def analyze_error(request: AnalyzeErrorRequest):
+    """Analyze terminal error and suggest fixes."""
+    try:
+        suggestion = await agent_service.process_task(
+            f"The following error occurred in the terminal:\n{request.error_message}\n\nSuggest a fix or provide more context.",
+            active_file_path=request.context
+        )
+        return {"suggestion": suggestion}
+    except Exception as e:
+        logger.error(f"Error analyzing terminal error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+

@@ -7,6 +7,21 @@ interface ChatMessage {
   timestamp: number;
 }
 
+export interface PendingEdit {
+  path: string;
+  search: string;
+  replace: string;
+  status: 'pending' | 'applied' | 'rejected';
+}
+
+export interface AgentState {
+  isRunning: boolean;
+  isStreaming: boolean;
+  task: string;
+  steps: { id: string, type: 'status' | 'log' | 'diff' | 'error', content: string }[];
+  pendingEdits: PendingEdit[];
+}
+
 interface File {
   id: string;
   name: string;
@@ -21,14 +36,34 @@ interface AppState {
   activeFileId: string | null;
   selectedModel: string;
   apiKeys: Record<string, string>; // e.g., { openai: 'sk-...', claude: 'sk-...' }
+  
+  // Day 3 Agent & Diff State
+  agentState: AgentState;
+  showDiffViewer: boolean;
+  activeDiff: { original: string, modified: string, path: string } | null;
+  commandPaletteOpen: boolean;
 
   addChatMessage: (message: ChatMessage) => void;
+  clearChat: () => void;
   addOpenFile: (file: File) => void;
   removeOpenFile: (fileId: string) => void;
   setActiveFile: (fileId: string | null) => void;
   updateFileContent: (fileId: string, newContent: string) => void;
   setSelectedModel: (model: string) => void;
   setApiKey: (provider: string, key: string) => void;
+  
+  // Agent Actions
+  setAgentState: (state: Partial<AgentState>) => void;
+  addAgentStep: (step: AgentState['steps'][0]) => void;
+  addPendingEdit: (edit: PendingEdit) => void;
+  updatePendingEdit: (path: string, status: PendingEdit['status']) => void;
+  clearAgentState: () => void;
+  
+  // Diff Actions
+  setShowDiffViewer: (show: boolean, diff?: { original: string, modified: string, path: string } | null) => void;
+  
+  // Command Actions
+  setCommandPaletteOpen: (open: boolean) => void;
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -38,10 +73,27 @@ export const useStore = create<AppState>((set) => ({
   selectedModel: 'gemini-pro', // Default model
   apiKeys: {},
 
+  agentState: {
+    isRunning: false,
+    isStreaming: false,
+    task: '',
+    steps: [],
+    pendingEdits: []
+  },
+  showDiffViewer: false,
+  activeDiff: null,
+  commandPaletteOpen: false,
+
   addChatMessage: (message) =>
-    set((state) => ({
-      chatMessages: [...state.chatMessages, message],
-    })),
+    set((state) => {
+      const updatedMessages = [...state.chatMessages, message];
+      // Limit to 100 messages to prevent memory bloat on 8GB machines
+      if (updatedMessages.length > 100) {
+        return { chatMessages: updatedMessages.slice(updatedMessages.length - 100) };
+      }
+      return { chatMessages: updatedMessages };
+    }),
+  clearChat: () => set({ chatMessages: [] }),
   addOpenFile: (file) =>
     set((state) => {
       if (state.openFiles.find((f) => f.id === file.id)) {
@@ -66,4 +118,45 @@ export const useStore = create<AppState>((set) => ({
     set((state) => ({
       apiKeys: { ...state.apiKeys, [provider]: key },
     })),
+    
+  setAgentState: (newState) => 
+    set((state) => ({ agentState: { ...state.agentState, ...newState } })),
+  
+  addAgentStep: (step) =>
+    set((state) => ({
+      agentState: {
+        ...state.agentState,
+        steps: [...state.agentState.steps, step]
+      }
+    })),
+    
+  addPendingEdit: (edit) =>
+    set((state) => ({
+      agentState: {
+        ...state.agentState,
+        pendingEdits: [...state.agentState.pendingEdits, edit]
+      }
+    })),
+    
+  updatePendingEdit: (path, status) =>
+    set((state) => ({
+      agentState: {
+        ...state.agentState,
+        pendingEdits: state.agentState.pendingEdits.map((e) => 
+          e.path === path ? { ...e, status } : e
+        )
+      }
+    })),
+    
+  clearAgentState: () => 
+    set({
+      agentState: { isRunning: false, isStreaming: false, task: '', steps: [], pendingEdits: [] }
+    }),
+    
+    
+  setShowDiffViewer: (show, diff = null) =>
+    set({ showDiffViewer: show, activeDiff: diff }),
+    
+  setCommandPaletteOpen: (open) =>
+    set({ commandPaletteOpen: open }),
 }));
